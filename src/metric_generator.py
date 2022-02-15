@@ -1,4 +1,5 @@
 from cmath import inf
+from sys import exec_prefix
 import time
 from unittest import result
 from pypfm import PFMLoader
@@ -11,7 +12,16 @@ import cv2
 def foo(img0, img1):
     # fake disparity map calculation 
     # only for test
-    return [ np.random.randint(0,1000, size=img0.shape[:2]) ]*2
+    return [ np.random.randint(0,255, size=(img0.shape[0], img0.shape[1], img0.shape[0]), dtype='uint8' ) ]*2
+
+def disparity_map_from_cost_matrix(cost_mat: np.ndarray):
+    ind_min = np.argmin(cost_mat, axis=2)
+    res = np.arange(0, cost_mat.shape[1], 1)
+    res = np.expand_dims(res, 0)
+    res = np.repeat(res, cost_mat.shape[0],axis=0)
+
+    res = np.abs(res - ind_min)
+    return res
 
 def main():
     loader = PFMLoader(color=False, compress=False)
@@ -27,6 +37,7 @@ def main():
         "foo": foo,
         "fooBis": foo
     }
+
     result_metrics = []
     df = pd.DataFrame( columns=['function', "data", "execution_time", "score_0", "score_1"])
     print(df)
@@ -50,16 +61,27 @@ def main():
         
         for f_name, f in f_to_test.items():
             start = time.time()
-            disp_map0, disp_map1 = f(img0, img1)
-            exec_time = time.time() - start
+            cost_mat0, cost_mat1 = f(img0, img1)
+            cost_time = time.time()
+            disp_map0 = disparity_map_from_cost_matrix(cost_mat0)
+            # disp_map1 = disparity_map_from_cost_matrix(cost_mat1)
+            disp_map1 = np.zeros(disp_map0.shape)
 
+
+            end_time = time.time()
+            exec_time = end_time - start
             # make mean squared error on echea res in df
             error0 = np.square(disp_map0 - pfm0).mean(axis=None)
             error1 = np.square(disp_map1 - pfm1).mean(axis=None)
 
             df.loc[len(df.index)] = [f_name, data.name, exec_time, error0, error1]
 
-            print("\t-> ", exec_time, error0, error1)
+            print("\t-> ", exec_time, cost_time-start, end_time-cost_time, error0, error1)
+
+            del cost_mat0
+            del cost_mat1
+            del disp_map0
+            del disp_map1
         result_metrics.append(df)
         pass
     print(df)
