@@ -2,3 +2,5 @@ build/
 .vscode/
 Makefile
 venv/
+.npy
+**/__pycache__/**

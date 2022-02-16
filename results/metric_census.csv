@@ -1,0 +1,25 @@
+  ,                function,       data,  execution_time,       score_0,
+0 ,  faster_census_matching,    curule1,       71.998846,   2996.166504
+1 ,  faster_census_matching,    skates2,       75.901057,   4269.431152
+2 ,  faster_census_matching,  skiboots3,       76.471840,  12158.760742
+3 ,  faster_census_matching,    ladder2,       73.627260,    534.798401
+4 ,  faster_census_matching,  skiboots2,       73.919721,  30837.060547
+5 ,  faster_census_matching,   artroom2,       75.797298,   4518.029297
+6 ,  faster_census_matching,  skiboots1,       74.413891,   7471.094727
+7 ,  faster_census_matching,    skates1,       73.953022,  52051.226562
+8 ,  faster_census_matching,     chess2,       73.540080,  16167.760742
+9 ,  faster_census_matching,   bandsaw1,       73.041498,   1730.331177
+10,  faster_census_matching,    ladder1,       75.509189,    458.691956
+11,  faster_census_matching,  pendulum1,       73.127890,   2669.055420
+12,  faster_census_matching,     chess1,       73.426810,  16771.585938
+13,  faster_census_matching,  pendulum2,       73.675591,   2995.926270
+14,  faster_census_matching,   artroom1,       77.041704,   2929.231201
+15,  faster_census_matching,   bandsaw2,       76.602648,  16909.339844
+16,  faster_census_matching,  traproom2,       78.258933,   2022.986816
+17,  faster_census_matching,     chess3,       83.259215,   8808.963867
+18,  faster_census_matching,  octogons2,       77.966172,    432.106445
+19,  faster_census_matching,  octogons1,       74.284343,    386.541534
+20,  faster_census_matching,  traproom1,       79.561903,   1955.262207
+21,  faster_census_matching,    curule2,       77.508305,   5791.727051
+22,  faster_census_matching,    curule3,       78.673972,   1642.255249
+23,  faster_census_matching,    podium1,       74.011219,  11422.297852
