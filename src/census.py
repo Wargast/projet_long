@@ -165,7 +165,26 @@ def faster_census_matching(
 
         error_map[:, 0 : min(l2_cropped - d, l1_cropped), d] = costs
 
-    disparity_map = np.argmin(error_map, axis=2)
+    return error_map
+
+
+def disparity_from_error_map(
+    error_map: np.ndarray, block_size: int, cost_threshold: int = 125
+) -> np.ndarray:
+    (h_cropped, l_cropped, _) = error_map.shape
+    half_block_size = block_size // 2
+
+    errors = np.min(error_map, axis=2)
+    disparity_map = np.argmin(error_map, axis=2).astype(np.float32)
+
+    disparity_map[errors > cost_threshold] = np.inf
+
+    disparity_map = np.pad(
+        disparity_map,
+        (half_block_size, half_block_size),
+        mode='constant',
+        constant_values=np.inf
+    )
 
     return disparity_map
 
@@ -174,8 +193,12 @@ if __name__ == "__main__":
     i_left = cv2.imread("datas/middlebury/artroom1/im0.png", cv2.IMREAD_GRAYSCALE)
     i_right = cv2.imread("./datas/middlebury/artroom1/im1.png", cv2.IMREAD_GRAYSCALE)
 
-    disparity_map = faster_census_matching(
-        i_left, i_right, block_size=15, max_disparity=128, cost_threshold=0
+    error_map = faster_census_matching(
+        i_left, i_right, block_size=15, max_disparity=128
+    )
+
+    disparity_map = disparity_from_error_map(
+        error_map, block_size=15, cost_threshold=100
     )
 
     np.save("disp_census_artroom1.npy", disparity_map)

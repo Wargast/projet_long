@@ -7,21 +7,10 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import cv2
+from tqdm import tqdm
 
 # import algo of disparity map calculation
-def foo(img0, img1):
-    # fake disparity map calculation 
-    # only for test
-    return [ np.random.randint(0,255, size=(img0.shape[0], img0.shape[1], img0.shape[0]), dtype='uint8' ) ]*2
-
-def disparity_map_from_cost_matrix(cost_mat: np.ndarray):
-    ind_min = np.argmin(cost_mat, axis=2)
-    res = np.arange(0, cost_mat.shape[1], 1)
-    res = np.expand_dims(res, 0)
-    res = np.repeat(res, cost_mat.shape[0],axis=0)
-
-    res = np.abs(res - ind_min)
-    return res
+from census import faster_census_matching, naive_census_matching, disparity_from_error_map
 
 def main():
     loader = PFMLoader(color=False, compress=False)
@@ -33,59 +22,62 @@ def main():
     ]
     print(f"dataset size: {len(datas_to_process)}")
     
+    # dict of function to test name as key
     f_to_test = {
-        "foo": foo,
-        "fooBis": foo
+        # "naive_census_matching": naive_census_matching,
+        "faster_census_matching": faster_census_matching,
     }
 
     result_metrics = []
-    df = pd.DataFrame( columns=['function', "data", "execution_time", "score_0", "score_1"])
-    print(df)
-    # iter on data
+    df = pd.DataFrame( columns=['function', "data", "execution_time", "score_0"])
+
+    # iter on dataset
     for data in datas_to_process:
         # open image 
         print(data.name.ljust(30))
-        img0 = cv2.imread((data/'im0.png').as_posix())
-        img1 = cv2.imread((data/'im1.png').as_posix())
+        img0 = cv2.imread((data/'im0.png').as_posix(), cv2.IMREAD_GRAYSCALE)
+        img1 = cv2.imread((data/'im1.png').as_posix(), cv2.IMREAD_GRAYSCALE)
 
         # open GS disp_map
         pfm0 = loader.load_pfm(data/'disp0.pfm')
-        pfm1 = loader.load_pfm(data/'disp1.pfm')
 
         # check if GS is transposed 
         if pfm0.shape != img0.shape[:2]:
             pfm0 = pfm0.transpose()
-            pfm1 = pfm1.transpose()
 
         # process each algo on stereocouple
         
         for f_name, f in f_to_test.items():
+            print(f"process metric for {f_name}...")
             start = time.time()
-            cost_mat0, cost_mat1 = f(img0, img1)
-            cost_time = time.time()
-            disp_map0 = disparity_map_from_cost_matrix(cost_mat0)
-            # disp_map1 = disparity_map_from_cost_matrix(cost_mat1)
-            disp_map1 = np.zeros(disp_map0.shape)
-
+            cost_map = f(img0, img1)
+            disparity_map = disparity_from_error_map(
+                cost_map, block_size=15, cost_threshold=100
+            )
 
             end_time = time.time()
             exec_time = end_time - start
+
+
             # make mean squared error on echea res in df
-            error0 = np.square(disp_map0 - pfm0).mean(axis=None)
-            error1 = np.square(disp_map1 - pfm1).mean(axis=None)
 
-            df.loc[len(df.index)] = [f_name, data.name, exec_time, error0, error1]
+            error = np.square(disparity_map - pfm0)
+            # filter nan and inf
+            error = error[~np.isnan(error)]
+            error = error[~np.isinf(error)]
+            error = error.mean(axis=None)
 
-            print("\t-> ", exec_time, cost_time-start, end_time-cost_time, error0, error1)
+            df.loc[len(df.index)] = [f_name, data.name, exec_time, error]
 
-            del cost_mat0
-            del cost_mat1
-            del disp_map0
-            del disp_map1
+            print("\t-> ", exec_time, error)
+
+            del cost_map
+            del disparity_map
         result_metrics.append(df)
-        pass
+        
     print(df)
     # generate stat on result
+    df.to_csv(f"results/metrics/{'-'.join(f_to_test.keys())}.csv")
 
 
 
