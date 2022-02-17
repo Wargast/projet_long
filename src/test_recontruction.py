@@ -84,12 +84,13 @@ minDisparity = param["minDisparity"]
 
 
 stereo = cv2.StereoBM_create()
+stereo = cv2.StereoSGBM_create(numDisparities=16*20, blockSize=21)
 stereo.setNumDisparities(numDisparities)
 stereo.setBlockSize(blockSize)
-stereo.setPreFilterType(preFilterType)
-stereo.setPreFilterSize(preFilterSize)
-stereo.setPreFilterCap(preFilterCap)
-stereo.setTextureThreshold(textureThreshold)
+# stereo.setPreFilterType(preFilterType)
+# stereo.setPreFilterSize(preFilterSize)
+# stereo.setPreFilterCap(preFilterCap)
+# stereo.setTextureThreshold(textureThreshold)
 stereo.setUniquenessRatio(uniquenessRatio)
 stereo.setSpeckleRange(speckleRange)
 stereo.setSpeckleWindowSize(speckleWindowSize)
@@ -99,7 +100,7 @@ stereo.setMinDisparity(minDisparity)
 # Compute the disparity image
 disparity = stereo.compute(img0, img1)/16*2.
 print(f"bound: [{disparity.min()}, {disparity.max()}]")
-disparity[disparity <= 30] = np.nan
+disparity[disparity <= 80] = np.nan
 print(f"bound: [{disparity.min()}, {disparity.max()}]")
     
 points_p = recontruction(disparity, Q)

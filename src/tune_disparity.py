@@ -38,7 +38,8 @@ cv2.resizeWindow('disp',600,600)
 
 
 # Creating an object of StereoBM algorithm
-stereo = cv2.StereoBM_create()
+# stereo = cv2.StereoBM_create()
+stereo = cv2.StereoSGBM_create()
 
 loader = PFMLoader(color=False, compress=False)
 dataset_path = Path("datas/middlebury/chess1")
@@ -105,10 +106,10 @@ while True:
     # Setting the updated parameters before computing disparity map
     stereo.setNumDisparities(numDisparities)
     stereo.setBlockSize(blockSize)
-    stereo.setPreFilterType(preFilterType)
-    stereo.setPreFilterSize(preFilterSize)
-    stereo.setPreFilterCap(preFilterCap)
-    stereo.setTextureThreshold(textureThreshold)
+    # stereo.setPreFilterType(preFilterType)
+    # stereo.setPreFilterSize(preFilterSize)
+    # stereo.setPreFilterCap(preFilterCap)
+    # stereo.setTextureThreshold(textureThreshold)
     stereo.setUniquenessRatio(uniquenessRatio)
     stereo.setSpeckleRange(speckleRange)
     stereo.setSpeckleWindowSize(speckleWindowSize)
@@ -129,6 +130,7 @@ while True:
 
     # Displaying the disparity map
     cv2.imshow("disp",disparity)
+    print("OK!")
     
 
     # Close window using esc key

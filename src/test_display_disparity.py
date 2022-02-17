@@ -16,7 +16,8 @@ dataset_path = Path("datas/middlebury/chess1")
 i_left = cv2.imread("datas/middlebury/chess1/im0.png", cv2.IMREAD_GRAYSCALE)
 i_right = cv2.imread("./datas/middlebury/chess1/im1.png", cv2.IMREAD_GRAYSCALE)
 
-stereo = cv2.StereoBM_create(numDisparities=numDisparities, blockSize=blockSize)
+# stereo = cv2.StereoBM_create(numDisparities=numDisparities, blockSize=blockSize)
+stereo = cv2.StereoSGBM_create(numDisparities=numDisparities, blockSize=blockSize)
 
 # Compute the disparity image
 disparity_map = stereo.compute(i_left, i_right)/16
