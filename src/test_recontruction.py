@@ -9,30 +9,24 @@ import pandas as pd
 import numpy as np
 import cv2
 import pyvista as pv
-######## calib.txt ladder1 #########
+from setup_tools import parse_calib_file, parse_pickle
+######## var #########
 
-fx = 1733.68
-fy = 1733.68
-cx = 819.72
-cy = 957.55
-
-doffs = 0
-Tx = 221.13
-width = 1920
-height = 1080
-ndisp = 100
-vmin = 20
-vmax = 70
-
-
+loader = PFMLoader(color=False, compress=False)
+dataset_path = Path("datas/middlebury/chess1")
+tune_params = Path("results/param.pkl")
+calib_params = parse_calib_file(dataset_path/'calib.txt')
+pprint(calib_params)
 Q = np.array(
     [
-        [1,  0,   0,    -cx],
-        [0,  1,   0,    -cy],
-        [0,  0,   0,     fx],
-        [0,  0,  1/Tx,    0]
+        [1,         0,         0,              -calib_params["cam0"][0,2] ],
+        [0,         1,         0,              -calib_params["cam0"][1,2] ],
+        [0,         0,         0,               calib_params["cam0"][0,0] ],
+        [0,         0,  1/calib_params["baseline"],                     0 ],
     ]
 )
+
+
 
 ############################
 
@@ -54,48 +48,29 @@ def recontruction(disparity, Q):
 
 
 
-loader = PFMLoader(color=False, compress=False)
-dataset_path = Path("datas/middlebury/chess1")
-tune_params = Path("results/param.pkl")
-
 disparity = loader.load_pfm(dataset_path/'disp0.pfm')
 # pfm1 = loader.load_pfm(dataset_path/'disp1.pfm')
 img0 = cv2.imread((dataset_path/"im0.png").as_posix(), cv2.IMREAD_GRAYSCALE)
 img1 = cv2.imread((dataset_path/"im1.png").as_posix(), cv2.IMREAD_GRAYSCALE)
 
-with open(tune_params, 'rb') as file:
-      
-    # Call load method to deserialze
-    param = pickle.load(file)
-  
-    pprint(param)
+stereo_params = parse_pickle(tune_params)
+pprint(stereo_params)
 
-numDisparities = param["numDisparities"]
-blockSize = param["blockSize"]
-preFilterType = param["preFilterType"]
-preFilterSize = param["preFilterSize"]
-preFilterCap = param["preFilterCap"]
-textureThreshold = param["textureThreshold"]
-uniquenessRatio = param["uniquenessRatio"]
-speckleRange = param["speckleRange"]
-speckleWindowSize = param["speckleWindowSize"]
-disp12MaxDiff = param["disp12MaxDiff"]
-minDisparity = param["minDisparity"]
 
 
 stereo = cv2.StereoBM_create()
-stereo = cv2.StereoSGBM_create(numDisparities=16*20, blockSize=21)
-stereo.setNumDisparities(numDisparities)
-stereo.setBlockSize(blockSize)
-# stereo.setPreFilterType(preFilterType)
-# stereo.setPreFilterSize(preFilterSize)
-# stereo.setPreFilterCap(preFilterCap)
-# stereo.setTextureThreshold(textureThreshold)
-stereo.setUniquenessRatio(uniquenessRatio)
-stereo.setSpeckleRange(speckleRange)
-stereo.setSpeckleWindowSize(speckleWindowSize)
-stereo.setDisp12MaxDiff(disp12MaxDiff)
-stereo.setMinDisparity(minDisparity)
+stereo = cv2.StereoSGBM_create()
+stereo.setNumDisparities(stereo_params["numDisparities"])
+stereo.setBlockSize(stereo_params["blockSize"])
+# stereo.setPreFilterType(param["preFilterType"])
+# stereo.setPreFilterSize(param["preFilterSize"])
+# stereo.setPreFilterCap(param["preFilterCap"])
+# stereo.setTextureThreshold(param["textureThreshold"])
+stereo.setUniquenessRatio(stereo_params["uniquenessRatio"])
+stereo.setSpeckleRange(stereo_params["speckleRange"])
+stereo.setSpeckleWindowSize(stereo_params["speckleWindowSize"])
+stereo.setDisp12MaxDiff(stereo_params["disp12MaxDiff"])
+stereo.setMinDisparity(stereo_params["minDisparity"])
 
 # Compute the disparity image
 disparity = stereo.compute(img0, img1)/16*2.

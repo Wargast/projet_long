@@ -1,7 +1,7 @@
 from cmath import inf
 import time
 from unittest import result
-from pypfm import PFMLoader
+# from pypfm import PFMLoader
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -41,11 +41,11 @@ cv2.resizeWindow('disp',600,600)
 # stereo = cv2.StereoBM_create()
 stereo = cv2.StereoSGBM_create()
 
-loader = PFMLoader(color=False, compress=False)
+# loader = PFMLoader(color=False, compress=False)
 dataset_path = Path("datas/middlebury/chess1")
 tune_params = Path("results/param.pkl")
 
-disparity = loader.load_pfm(dataset_path/'disp0.pfm')
+# disparity = loader.load_pfm(dataset_path/'disp0.pfm')
 # pfm1 = loader.load_pfm(dataset_path/'disp1.pfm')
 imgL_gray = cv2.imread((dataset_path/"im0.png").as_posix(), cv2.IMREAD_GRAYSCALE)
 imgR_gray = cv2.imread((dataset_path/"im1.png").as_posix(), cv2.IMREAD_GRAYSCALE)
@@ -117,6 +117,7 @@ while True:
     stereo.setMinDisparity(minDisparity)
 
     # Calculating disparity using the StereoBM algorithm
+
     disparity = stereo.compute(Left_nice,Right_nice)
     # NOTE: Code returns a 16bit signed single channel image,
     # CV_16S containing a disparity map scaled by 16. Hence it 
