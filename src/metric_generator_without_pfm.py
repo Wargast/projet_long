@@ -79,8 +79,5 @@ def main():
     df.to_csv(f"results/metrics/{'-'.join(f_to_test.keys())}.csv")
 
 
-
-
-
 if __name__ == "__main__":
     main()
