@@ -9,6 +9,13 @@ im_ref = cv2.imread('/home/apigneux/nosave/A3/projet_long/datas/middlebury/artro
 
 
 def ssd_disparites(im_ref, im_2,taille_f = 15):
+    """AI is creating summary for ssd_disparites
+
+    Args:
+        im_ref ([type]): [description]
+        im_2 ([type]): [description]
+        taille_f (int, optional): taille de la fenetre. Defaults to 15.
+    """
 
     # Paramètres
 
