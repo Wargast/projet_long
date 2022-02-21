@@ -3,8 +3,8 @@ import cv2
 import math
 import time
 
-im_2 = cv2.imread('/home/apigneux/nosave/A3/projet_long/datas/middlebury/artroom1/im0.png', cv2.IMREAD_GRAYSCALE)
-im_ref = cv2.imread('/home/apigneux/nosave/A3/projet_long/datas/middlebury/artroom1/im0.png', cv2.IMREAD_GRAYSCALE)
+im_2 = cv2.imread('../datas/middlebury/artroom1/im0.png', cv2.IMREAD_GRAYSCALE)
+im_ref = cv2.imread('../datas/middlebury/artroom1/im0.png', cv2.IMREAD_GRAYSCALE)
 
 
 
@@ -21,17 +21,39 @@ def ssd_disparites(im_ref, im_2,taille_f = 15):
 
     l = im_ref.shape[0]
     c = im_ref.shape[1]
-    disparity = np.zeros((l,c))
     f = math.floor(taille_f/2)
+
+
+
+    ## k = 0
+    blocks_ref = np.lib.stride_tricks.sliding_window_view(im_ref,(taille_f,taille_f))
     blocks = np.lib.stride_tricks.sliding_window_view(im_2,(taille_f,taille_f))
-    print(blocks.shape)
+
+    blocks_0 = np.ones(blocks.shape)*np.inf    
+    error = np.square(blocks_ref-blocks).sum(axis=2).sum(axis=2)
+    disparity = np.zeros((blocks.shape[0],blocks.shape[1]))
+    for k in range(1,128):
+        blocks_k = blocks_0
+        # decalage de k
+        print(k)
+        blocks_k[:,:blocks_k.shape[1]-k,:,:] = blocks[:,k:,:,:]
+
+        # Calcul de l'erreur  ssd
+        error_k = np.square(blocks_ref-blocks_k).sum(axis=2).sum(axis=2)
+
+        # Calcul du decalage minimum 
+        error = np.minimum(error,error_k)
+        disparity[error > error_k] = k
+
+    disparity_res = np.ones((l,c))*np.inf
+    disparity_res[f:l-f,f:c-f] = disparity
     
     # Création de la carte de disparités
-    for i in range(l):
-        for j in range(c):
-            if i > f and i < (l-f) and j > f and j < (c-f):
-                bloc0 = im_ref[i-f:i+f,j-f:j+f]
-                erreurs = np.zeros((1,128))
+    # for i in range(l):
+    #     for j in range(c):
+    #         if i > f and i < (l-f) and j > f and j < (c-f):
+    #             bloc0 = im_ref[i-f:i+f,j-f:j+f]
+    #             erreurs = np.zeros((1,128))
 
 
     # for i in range(l):
@@ -55,7 +77,9 @@ def ssd_disparites(im_ref, im_2,taille_f = 15):
     #         else: 
     #             disparity[i,j] = np.inf
                 
-    np.save("disparity_ssd.npy", disparity)
+    np.save("disparity_ssd.npy", disparity_res)
+    return disparity_res
+
 
 debut = time.time()
 ssd_disparites(im_ref=im_ref, im_2=im_2)
