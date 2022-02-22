@@ -42,8 +42,8 @@ def ssd_disparites(im_ref, im_2,taille_f = 15):
         error_k = np.square(blocks_ref-blocks_k).sum(axis=2).sum(axis=2)
 
         # Calcul du decalage minimum 
-        error = np.minimum(error,error_k)
         disparity[error > error_k] = k
+        error = np.minimum(error,error_k)
 
     disparity_res = np.ones((l,c))*np.inf
     disparity_res[f:l-f,f:c-f] = disparity
