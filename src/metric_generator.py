@@ -1,4 +1,5 @@
 from cmath import inf
+from distutils.log import error
 from sys import exec_prefix
 import time
 from unittest import result
@@ -8,9 +9,27 @@ import pandas as pd
 import numpy as np
 import cv2
 from tqdm import tqdm
+from setup_tools import stereoBM_from_file, stereoSGBM_from_file
 
 # import algo of disparity map calculation
 from census import faster_census_matching, naive_census_matching, disparity_from_error_map
+
+def rms(I_ref, I):
+    # make mean squared error on echea res in df
+
+    error = np.square(I - I_ref)
+
+    # filter nan and inf
+    error = error[~np.isnan(error)]
+    error = error[~np.isinf(error)]
+    error = error.mean(axis=None)
+    return error
+
+def bad(I_ref: np.ndarray, I: np.ndarray, alpha: float):
+    diff = I - I_ref
+    bad_pix = diff[diff>alpha]
+    return bad_pix.size/I_ref.size
+
 
 def main():
     loader = PFMLoader(color=False, compress=False)
@@ -23,61 +42,68 @@ def main():
     print(f"dataset size: {len(datas_to_process)}")
     
     # dict of function to test name as key
-    f_to_test = {
-        # "naive_census_matching": naive_census_matching,
-        "faster_census_matching": faster_census_matching,
+    f_error = {
+        "rms": (rms, None),
+        "bad50": (bad, 50),
+        "bad200": (bad, 200),
+        "bad100": (bad,100),
+        "bad300": (bad, 300),
+        "bad20": (bad, 20),
+        "bad2.0": (bad, 2.0),
+        "bad1.0": (bad, 1.0),
+        "bad0.5": (bad, 0.5),
     }
 
     result_metrics = []
-    df = pd.DataFrame( columns=['function', "data", "execution_time", "score_0"])
-
+    df = pd.DataFrame( 
+        columns=["data", "execution_time"] + list(f_error.keys())
+    )
+    print(df)
+    stereo = stereoBM_from_file("results/param.pkl")
     # iter on dataset
-    for data in datas_to_process:
+    for data in tqdm(datas_to_process):
         # open image 
         print(data.name.ljust(30))
         img0 = cv2.imread((data/'im0.png').as_posix(), cv2.IMREAD_GRAYSCALE)
         img1 = cv2.imread((data/'im1.png').as_posix(), cv2.IMREAD_GRAYSCALE)
 
         # open GS disp_map
-        pfm0 = loader.load_pfm(data/'disp0.pfm')
+        map_ref = loader.load_pfm(data/'disp0.pfm')
 
         # check if GS is transposed 
-        if pfm0.shape != img0.shape[:2]:
-            pfm0 = pfm0.transpose()
+        if map_ref.shape != img0.shape[:2]:
+            map_ref = map_ref.transpose()
 
+        start = time.time()
         # process each algo on stereocouple
+        disparity_map = stereo.compute(img0, img1)/16
+        end_time = time.time()
+        exec_time = end_time - start
         
-        for f_name, f in f_to_test.items():
-            print(f"process metric for {f_name}...")
-            start = time.time()
-            cost_map = f(img0, img1)
-            disparity_map = disparity_from_error_map(
-                cost_map, block_size=15, cost_threshold=100
-            )
+        df.loc[len(df.index)] = 0
+        print(df)
 
-            end_time = time.time()
-            exec_time = end_time - start
+        df.iloc[len(df.index)-1, 0] = data.name
+        df.iloc[len(df.index)-1, 1] = exec_time
+
+        for f_name, [f, param] in f_error.items():
+            print(f"process metric {f_name}...")
+            if param is not None:
+                res = f(disparity_map, map_ref, param)
+            else:
+                res = f(disparity_map, map_ref)
+
+            df.loc[len(df.index)-1, f_name] = res
+            
 
 
-            # make mean squared error on echea res in df
-
-            error = np.square(disparity_map - pfm0)
-            # filter nan and inf
-            error = error[~np.isnan(error)]
-            error = error[~np.isinf(error)]
-            error = error.mean(axis=None)
-
-            df.loc[len(df.index)] = [f_name, data.name, exec_time, error]
-
-            print("\t-> ", exec_time, error)
-
-            del cost_map
-            del disparity_map
+        # del cost_map
+        del disparity_map
         result_metrics.append(df)
         
     print(df)
     # generate stat on result
-    df.to_csv(f"results/metrics/{'-'.join(f_to_test.keys())}.csv")
+    df.to_csv(f"results/opencv_version.csv")
 
 
 
