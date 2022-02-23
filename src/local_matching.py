@@ -4,10 +4,17 @@ from tqdm import tqdm
 import census_c
 import cv2
 import time
-import pprofile
+# import pprofile
 
-class local_matching:
-    def __init__(self,max_disparity: int =64,block_size: int = 9,cost_threshold: int = 150,methode: str = "census",optimisation : str = "cython"):
+class Local_matching:
+    def __init__(
+        self,
+        max_disparity: int =64,
+        block_size: int = 9,
+        cost_threshold: int = 150,
+        methode: str = "census",
+        optimisation : str = "cython"
+        ):
         """__init__ instance de la classe local matching
 
         Args:
@@ -40,7 +47,15 @@ class local_matching:
 
             bs_r = self._faster_transform(i_right)
             bs_l = self._faster_transform(i_left)
-            error_map = census_c.census_matching(bs_l, bs_r, h1_cropped, l1_cropped, l2_cropped,  block_size=self.block_size, max_disparity=self.max_disparity)
+            error_map = census_c.census_matching(
+                bs_l,
+                bs_r, 
+                h1_cropped, 
+                l1_cropped, 
+                l2_cropped, 
+                block_size=self.block_size, 
+                max_disparity=self.max_disparity
+            )
         elif self.optimisation == "python":
             error_map = self._faster_matching(i_left, i_right)
         elif self.optimisation == "python_naif":
@@ -60,7 +75,10 @@ class local_matching:
         l_cropped = l - self.block_size + 1
 
         # calculate the bistrings for the image :
-        bit_strings = np.zeros((h_cropped, l_cropped, self.block_size ** 2), dtype=np.bool_)
+        bit_strings = np.zeros(
+            (h_cropped, l_cropped, self.block_size ** 2),
+            dtype=np.bool_
+        )
 
         for u in tqdm(range(h_cropped)):
             for v in range(l_cropped):
@@ -91,7 +109,10 @@ class local_matching:
         l_cropped = l - self.block_size + 1
 
         # get all blocks of the image of size (block_size x block_size)
-        blocks = np.lib.stride_tricks.sliding_window_view(i, (self.block_size, self.block_size))
+        blocks = np.lib.stride_tricks.sliding_window_view(
+            i, 
+            (self.block_size, self.block_size)
+        )
 
         blocks = blocks.reshape(h_cropped, l_cropped, self.block_size ** 2)
         bit_strings = blocks
@@ -106,7 +127,11 @@ class local_matching:
             bit_strings = blocks < centers
         return bit_strings
 
-    def _naive_matching(self,i_left: np.ndarray,i_right: np.ndarray,) -> np.ndarray:
+    def _naive_matching(
+        self,
+        i_left: np.ndarray,
+        i_right: np.ndarray,
+    ) -> np.ndarray:
 
         (h1, l1) = i_left.shape
         (h2, l2) = i_right.shape
@@ -264,7 +289,7 @@ if __name__ == "__main__":
     i_left = cv2.imread("./datas/middlebury/artroom1/im0.png", cv2.IMREAD_GRAYSCALE)
     i_right = cv2.imread("./datas/middlebury/artroom1/im1.png", cv2.IMREAD_GRAYSCALE)
 
-    matcher = local_matching()
+    matcher = Local_matching()
     error_map = matcher.compute(i_left,i_right)
     matcher.optimisation = "python"
     matcher.methode = "ssd"
