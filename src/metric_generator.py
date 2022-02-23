@@ -19,26 +19,16 @@ from local_matching import Local_matching
 # import algo of disparity map calculation
 from census import faster_census_matching, naive_census_matching, disparity_from_error_map
 
-def rms(I_ref, I):
+def rms(I_diff):
     # make mean squared error on echea res in df
-    I_filtred = I.copy()
-    I_filtred[I_filtred==-1] = np.inf
-    error = np.sqrt(np.square(I_filtred - I_ref))
-
-    # filter nan and inf
-    error = error[~np.isnan(error)]
-    error = error[~np.isinf(error)]
+    
+    error = np.sqrt(np.square(I_diff))
     error = error.mean(axis=None)
     return error
 
-def bad(I_ref: np.ndarray, I: np.ndarray, alpha: float):
-    I_filtred = I.copy()
-    I_filtred[I_filtred==-1] = np.inf    
-    diff = I_filtred - I_ref
-    diff = diff[~np.isnan(diff)]
-    diff = diff[~np.isinf(diff)]
-    bad_pix = diff[diff>alpha]
-    return bad_pix.size/I_ref.size
+def bad(I_diff: np.ndarray, alpha: float):
+    bad_pix = I_diff[I_diff>alpha]
+    return bad_pix.size/I_diff.size
 
 
 def main():
@@ -67,12 +57,13 @@ def main():
 
     result_metrics = []
     df = pd.DataFrame( 
-        columns=["data", "execution_time"] + list(f_error.keys())
+        columns=["data", "execution_time", "covering"] + list(f_error.keys())
     )
     print(df)
     # stereo = stereoBM_from_file("results/param.pkl")
     # stereo.setMinDisparity(0)
     stereo = Local_matching()
+    stereo = Local_matching(max_disparity=128,block_size=9, cost_threshold=5)
     # iter on dataset
     for data in tqdm(datas_to_process):
         # open image 
@@ -85,9 +76,11 @@ def main():
         # map_ref1 = read_pfm(data/'disp1.pfm')
 
         map_ref0 = loader.load_pfm(data/'disp0.pfm')
-        map_ref1 = loader.load_pfm(data/'disp1.pfm')
         map_ref0 = np.squeeze(map_ref0)
         map_ref0 = np.flipud(map_ref0)
+        map_ref1 = loader.load_pfm(data/'disp1.pfm')
+        map_ref1 = np.squeeze(map_ref1)
+        map_ref1 = np.flipud(map_ref1)
 
         # check if GS is transposed 
         # if map_ref.shape != img0.shape[:2]:
@@ -103,37 +96,46 @@ def main():
 
         df.iloc[len(df.index)-1, 0] = data.name
         df.iloc[len(df.index)-1, 1] = exec_time
+        
+        # make diff and filter non revelant values
+        I_filtred = disparity_map.copy()
+        I_filtred[I_filtred<=0] = np.inf 
+        I_diff = map_ref1 - I_filtred
+        I_diff = I_diff[~np.isnan(I_diff)]
+        I_diff = I_diff[~np.isinf(I_diff)]   
+        df.iloc[len(df.index)-1, 2] = I_diff.size/disparity_map.size
 
         for f_name, [f, param] in f_error.items():
-            print(f"process metric {f_name}...")
+            # print(f"process metric {f_name}...")
+
             if param is not None:
-                res = f(map_ref0, disparity_map, param)
+                res = f(I_diff, param)
             else:
-                res = f(map_ref0, disparity_map)
+                res = f(I_diff)
 
             df.loc[len(df.index)-1, f_name] = res
         print(df)
 
-        plt.figure(dataset_path.as_posix())#, figsize=(160,90))
+        plt.figure(data.name)#, figsize=(160,90))
         plt.subplot(2,2,1)
         plt.imshow(disparity_map, 'gray')
         plt.title("disparity map 0")
         plt.subplot(2,2,2)
-        plt.imshow(map_ref0, 'gray')
+        plt.imshow(map_ref1, 'gray')
         plt.title("Goal Stantard disparity map 0")
         
-        errormap_to_show = disparity_map - map_ref0
+        errormap_to_show = disparity_map - map_ref1
         errormap_to_show[np.isnan(errormap_to_show)] = 0
         errormap_to_show[np.isinf(errormap_to_show)] = 0
 
-        # plt.subplot(2,2,3)
-        # plt.imshow(np.abs(errormap_to_show), 'gray')
-        # plt.title("error /0")
-        # plt.subplot(2,2,4)
-        # plt.imshow(img0, "gray")
-        # plt.title("img0")
+        plt.subplot(2,2,3)
+        plt.imshow(np.abs(errormap_to_show), 'gray')
+        plt.title("error /0")
+        plt.subplot(2,2,4)
+        plt.imshow(img0, "gray")
+        plt.title("img0")
 
-        # plt.show()
+        plt.show()
 
         # del cost_map
         del disparity_map
@@ -142,7 +144,7 @@ def main():
         
     print(df)
     # generate stat on result
-    df.to_csv(f"results/opencv_version.csv")
+    df.to_csv(f"results/census-disp=128-block_size=9.csv")
 
 
 
