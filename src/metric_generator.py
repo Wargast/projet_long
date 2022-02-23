@@ -17,7 +17,7 @@ from census import faster_census_matching, naive_census_matching, disparity_from
 def rms(I_ref, I):
     # make mean squared error on echea res in df
 
-    error = np.square(I - I_ref)
+    error = np.sqrt(np.square(I - I_ref))
 
     # filter nan and inf
     error = error[~np.isnan(error)]
@@ -44,11 +44,12 @@ def main():
     # dict of function to test name as key
     f_error = {
         "rms": (rms, None),
-        "bad50": (bad, 50),
-        "bad200": (bad, 200),
-        "bad100": (bad,100),
         "bad300": (bad, 300),
-        "bad20": (bad, 20),
+        "bad200": (bad, 200),
+        "bad100": (bad, 100),
+        "bad50" : (bad, 50),
+        "bad20" : (bad, 20),
+        "bad10" : (bad, 10),
         "bad2.0": (bad, 2.0),
         "bad1.0": (bad, 1.0),
         "bad0.5": (bad, 0.5),
