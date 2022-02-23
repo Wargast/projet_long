@@ -5,7 +5,7 @@ import cv2
 import time
 
 
-def faster_census_transform(i: np.ndarray, block_size: int = 3) -> np.ndarray:
+def faster_transform(i: np.ndarray, block_size: int = 3) -> np.ndarray:
     if block_size % 2 == 0:
         raise ValueError("Block size must be an odd number")
 
@@ -21,12 +21,12 @@ def faster_census_transform(i: np.ndarray, block_size: int = 3) -> np.ndarray:
     blocks = blocks.reshape(h_cropped, l_cropped, block_size ** 2)
     return blocks
 
-def faster_census_matching(
+def faster_matching(
     i_left: np.ndarray,
     i_right: np.ndarray,
     block_size: int = 15,
     max_disparity: int = 64,
-    cost_threshold: int = 125,
+    metrics: str = "ssd",
 ) -> np.ndarray:
 
     (h1, l1) = i_right.shape
@@ -40,12 +40,12 @@ def faster_census_matching(
     l1_cropped = l1 - block_size + 1
 
     # calculate the bistrings for the first image :
-    bit_strings_1 = faster_census_transform(i_right, block_size=block_size)
+    bit_strings_1 = faster_transform(i_right, block_size=block_size)
 
     l2_cropped = l2 - block_size + 1
 
     # calculate the bitstrings for the second image
-    bit_strings_2 = faster_census_transform(i_left, block_size=block_size)
+    bit_strings_2 = faster_transform(i_left, block_size=block_size)
 
     # disparity_map = np.full((h1, l1), np.inf)
 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     i_left = cv2.imread("datas/middlebury/artroom1/im0.png", cv2.IMREAD_GRAYSCALE)
     i_right = cv2.imread("./datas/middlebury/artroom1/im1.png", cv2.IMREAD_GRAYSCALE)
 
-    error_map = faster_census_matching(
+    error_map = faster_matching(
         i_left, i_right, block_size=15, max_disparity=128
     )
 

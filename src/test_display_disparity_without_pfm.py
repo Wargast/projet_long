@@ -23,13 +23,13 @@ stereo = cv2.StereoSGBM_create(numDisparities=numDisparities, blockSize=blockSiz
 disparity_map = stereo.compute(i_left, i_right)/16
 disparity_map_GS = read_pfm("./datas/middlebury/artroom1/disp0.pfm")
 disparity_map_GS = cv2.flip(disparity_map_GS, 0)
-disparity_map = np.load("disp_sad_artroom1.npy")
+disparity_map = np.load("disp_census_artroom1.npy")
 plt.figure(dataset_path.as_posix())#, figsize=(160,90))
 plt.subplot(1,2,1)
 plt.imshow(disparity_map, 'gray')
 plt.title(f"disparity map with numDisparities={numDisparities}, blockSize={blockSize}")
 plt.subplot(1,2,2)
-plt.imshow(disparity_map_GS, 'gray')
+plt.imshow(disparity_map_GS, 'gray',origin="lower")
 plt.title("Goal Stantard disparity map")
 plt.show()
 
