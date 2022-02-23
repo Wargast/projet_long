@@ -7,6 +7,15 @@ import pprofile
 
 class local_matching:
     def __init__(self,max_disparity: int =64,block_size: int = 9,cost_threshold: int = 150,methode: str = "census",optimisation : str = "cython"):
+        """__init__ instance de la classe local matching
+
+        Args:
+            max_disparity (int, optional): [valeur maximal de matching]. Defaults to 64.
+            block_size (int, optional): [taille du bloc de correlation]. Defaults to 9.
+            cost_threshold (int, optional): [seuil des erreurs]. Defaults to 150.
+            methode (str, optional): [methode utilise (census/ssd/sad)]. Defaults to "census".
+            optimisation (str, optional): [optimisation possible (cython/python/python_naif)]. Defaults to "cython".
+        """
         self.methode = methode
         self.optimisation = optimisation
         self.max_disparity = max_disparity
@@ -31,8 +40,11 @@ class local_matching:
             bs_r = self._faster_transform(i_right)
             bs_l = self._faster_transform(i_left)
             error_map = census_c.census_matching(bs_l, bs_r, h1_cropped, l1_cropped, l2_cropped,  block_size=self.block_size, max_disparity=self.max_disparity)
-        else:
+        elif self.optimisation == "python":
             error_map = self._faster_matching(i_left, i_right)
+        elif self.optimisation == "python_naif":
+            error_map = self._naive_matching(i_left,i_right)
+            
         return self._disparity_from_error_map(error_map)
     
     def _naive_transform(self,i: np.ndarray) -> np.ndarray:
@@ -108,38 +120,78 @@ class local_matching:
         l1_cropped = l1 - self.block_size + 1
 
         # calculate the bistrings for the first image :
-        bit_strings_1 = self._faster_census_transform(i_left)
-
+        bit_strings_1 = self._faster_transform(i_left)
+        
         h2_cropped = h2 - self.block_size + 1
         l2_cropped = l2 - self.block_size + 1
 
         # calculate the bitstrings for the second image
-        bit_strings_2 = self._faster_census_transform(i_right)
+        bit_strings_2 = self._faster_transform(i_right)
 
         disparity_map = np.full((h1, l1), np.inf)
 
         # calculate the matching error between pixels of i1 and
         # pixels of i2 on the same line
+        if self.methode == "census":
+            for u in tqdm(range(h1_cropped)):
+                for v1 in range(l1_cropped):
+                    costs = np.full((self.max_disparity), np.inf)
 
-        for u in tqdm(range(h1_cropped)):
-            for v1 in range(l1_cropped):
-                costs = np.full((self.max_disparity), np.inf)
+                    for d in range(self.max_disparity):
+                        v2 = v1 + d
+                        if v2 < l2_cropped:
+                            bit_string_1 = bit_strings_1[u, v1]
+                            bit_string_2 = bit_strings_2[u, v2]
 
-                for d in range(self.max_disparity):
-                    v2 = v1 + d
-                    if v2 < l2_cropped:
-                        bit_string_1 = bit_strings_1[u, v1]
-                        bit_string_2 = bit_strings_2[u, v2]
+                            # matching error : hamming distance between the two bistrings
+                            cost = np.count_nonzero(bit_string_1 != bit_string_2)
 
-                        # matching error : hamming distance between the two bistrings
-                        cost = np.count_nonzero(bit_string_1 != bit_string_2)
+                            costs[d] = cost
 
-                        costs[d] = cost
+                    min_cost = np.min(costs)
+                    if min_cost <= self.cost_threshold:
+                        disparity = np.argmin(costs)
+                        disparity_map[half_block_size + u, half_block_size + v1] = disparity
+        elif self.methode == "ssd":
+            for u in tqdm(range(h1_cropped)):
+                for v1 in range(l1_cropped):
+                    costs = np.full((self.max_disparity), np.inf)
 
-                min_cost = np.min(costs)
-                if min_cost <= self.cost_threshold:
-                    disparity = np.argmin(costs)
-                    disparity_map[half_block_size + u, half_block_size + v1] = disparity
+                    for d in range(self.max_disparity):
+                        v2 = v1 + d
+                        if v2 < l2_cropped:
+                            bit_string_1 = bit_strings_1[u, v1]
+                            bit_string_2 = bit_strings_2[u, v2]
+
+                            # matching error : hamming distance between the two bistrings
+                            cost = np.square(bit_string_1 - bit_string_2).sum(axis=2)
+
+                            costs[d] = cost
+
+                    min_cost = np.min(costs)
+                    if min_cost <= self.cost_threshold:
+                        disparity = np.argmin(costs)
+                        disparity_map[half_block_size + u, half_block_size + v1] = disparity 
+        elif self.methode == "sad":
+            for u in tqdm(range(h1_cropped)):
+                for v1 in range(l1_cropped):
+                    costs = np.full((self.max_disparity), np.inf)
+
+                    for d in range(self.max_disparity):
+                        v2 = v1 + d
+                        if v2 < l2_cropped:
+                            bit_string_1 = bit_strings_1[u, v1]
+                            bit_string_2 = bit_strings_2[u, v2]
+
+                            # matching error : hamming distance between the two bistrings
+                            cost = np.sum(np.abs(bit_string_1 - bit_string_2),axis=2)
+
+                            costs[d] = cost
+
+                    min_cost = np.min(costs)
+                    if min_cost <= self.cost_threshold:
+                        disparity = np.argmin(costs)
+                        disparity_map[half_block_size + u, half_block_size + v1] = disparity            
         return disparity_map
 
     def _faster_matching(self,i_left: np.ndarray,i_right: np.ndarray,) -> np.ndarray:
