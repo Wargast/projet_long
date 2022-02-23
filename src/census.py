@@ -126,11 +126,13 @@ def naive_census_matching(
 
 
 def faster_census_matching(
-    i_left: np.ndarray,
-    i_right: np.ndarray,
+    bit_strings_l: np.ndarray,
+    bit_strings_r: np.ndarray,
+    h1_cropped: int,
+    l1_cropped: int,
+    l2_cropped: int,
     block_size: int = 15,
-    max_disparity: int = 64,
-    cost_threshold: int = 125,
+    max_disparity: int = 64
 ) -> np.ndarray:
 
     (h1, l1) = i_right.shape
@@ -199,18 +201,28 @@ if __name__ == "__main__":
 
     block_size = 9
 
+    max_disparity = 64
+
     h1_cropped = h1 - block_size + 1
     l1_cropped = l1 - block_size + 1
     l2_cropped = l2 - block_size + 1
 
-    bs_r = faster_census_transform(i_right, block_size=9)
-    bs_l = faster_census_transform(i_left, block_size=9)
+    bs_r = faster_census_transform(i_right, block_size=block_size)
+    bs_l = faster_census_transform(i_left, block_size=block_size)
     
-    error_map = census_c.census_matching(bs_l, bs_r, h1_cropped, l1_cropped, l2_cropped, block_size=9, max_disparity=64)
-
-    error_map2 = faster_census_matching(i_left, i_right, block_size=9, max_disparity=64)
+    a = time.perf_counter()
+    error_map = census_c.census_matching(bs_l, bs_r, h1_cropped, l1_cropped, l2_cropped, block_size=block_size, max_disparity=max_disparity)
+    b = time.perf_counter()
+    print(f"temps cython : {b - a}")
+    
+    error_map2 = faster_census_matching(bs_l, bs_r, h1_cropped, l1_cropped, l2_cropped, block_size=block_size, max_disparity=max_disparity)
+    c = time.perf_counter()
+    print(f"temps numpy : {c - b}")
 
     print(np.array_equal(error_map, error_map2))
+
+    
+    
 
     # prof = pprofile.Profile()
 
