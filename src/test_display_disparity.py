@@ -1,6 +1,7 @@
 from pathlib import Path
 import cv2
 import numpy as np
+from local_matching import Local_matching
 from pypfm import PFMLoader
 from matplotlib import pyplot as plt
 loader = PFMLoader(color=False, compress=False)
@@ -17,13 +18,17 @@ i_left = cv2.imread("datas/middlebury/chess1/im0.png", cv2.IMREAD_GRAYSCALE)
 i_right = cv2.imread("./datas/middlebury/chess1/im1.png", cv2.IMREAD_GRAYSCALE)
 
 # stereo = cv2.StereoBM_create(numDisparities=numDisparities, blockSize=blockSize)
-stereo = cv2.StereoSGBM_create(numDisparities=numDisparities, blockSize=blockSize)
+# stereo = cv2.StereoSGBM_create(numDisparities=numDisparities, blockSize=blockSize)
+# disparity_map = stereo.compute(i_left, i_right)/16
 
-# Compute the disparity image
-disparity_map = stereo.compute(i_left, i_right)/16
+stereo = Local_matching(max_disparity=128,block_size=9)
+disparity_map = stereo.compute(i_left, i_right)
+
+
 disparity_map_GS = loader.load_pfm("./datas/middlebury/chess1/disp0.pfm")
+disparity_map_GS = np.squeeze(disparity_map_GS)
+disparity_map_GS = np.flipud(disparity_map_GS)
 
-disparity_map_GS = cv2.flip(disparity_map_GS, 0)
 plt.figure(dataset_path.as_posix())#, figsize=(160,90))
 plt.subplot(1,2,1)
 plt.imshow(disparity_map, 'gray')
