@@ -4,3 +4,6 @@ Makefile
 venv/
 .npy
 **/__pycache__/**
+*.c
+*.html
+*.pyd

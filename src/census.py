@@ -1,7 +1,9 @@
 import numpy as np
 from tqdm import tqdm
+import census_c
 import cv2
 import time
+import pprofile
 
 
 def naive_census_transform(i: np.ndarray, block_size: int = 3) -> np.ndarray:
@@ -161,9 +163,7 @@ def faster_census_matching(
         right = bit_strings_1[:, 0 : min(l2_cropped - d, l1_cropped), :]
         left = bit_strings_2[:, d:, :]
 
-        costs = np.count_nonzero(right != left, axis=2)
-
-        error_map[:, 0 : min(l2_cropped - d, l1_cropped), d] = costs
+        error_map[:, 0 : min(l2_cropped - d, l1_cropped), d] = np.sum(right != left, axis=2)
 
     return error_map
 
@@ -190,15 +190,40 @@ def disparity_from_error_map(
 
 
 if __name__ == "__main__":
-    i_left = cv2.imread("datas/middlebury/artroom1/im0.png", cv2.IMREAD_GRAYSCALE)
+    i_left = cv2.imread("./datas/middlebury/artroom1/im0.png", cv2.IMREAD_GRAYSCALE)
+
     i_right = cv2.imread("./datas/middlebury/artroom1/im1.png", cv2.IMREAD_GRAYSCALE)
 
-    error_map = faster_census_matching(
-        i_left, i_right, block_size=15, max_disparity=128
-    )
+    (h1, l1) = i_right.shape
+    (h2, l2) = i_left.shape
 
-    disparity_map = disparity_from_error_map(
-        error_map, block_size=15, cost_threshold=100
-    )
+    block_size = 9
 
-    np.save("disp_census_artroom1.npy", disparity_map)
+    h1_cropped = h1 - block_size + 1
+    l1_cropped = l1 - block_size + 1
+    l2_cropped = l2 - block_size + 1
+
+    bs_r = faster_census_transform(i_right, block_size=9)
+    bs_l = faster_census_transform(i_left, block_size=9)
+    
+    error_map = census_c.census_matching(bs_l, bs_r, h1_cropped, l1_cropped, l2_cropped, block_size=9, max_disparity=64)
+
+    error_map2 = faster_census_matching(i_left, i_right, block_size=9, max_disparity=64)
+
+    print(np.array_equal(error_map, error_map2))
+
+    # prof = pprofile.Profile()
+
+    # with prof:
+    #     error_map = faster_census_matching(
+    #         i_left, i_right, block_size=15, max_disparity=150
+    #     )
+
+    #     disparity_map = disparity_from_error_map(
+    #         error_map, block_size=15, cost_threshold=100
+    #     )
+
+    # prof.dump_stats("profiling.txt")
+
+    # # np.save("disp_census_artroom1.npy", disparity_map)
+    # np.save("error_map_census_artroom1.npy", error_map)
