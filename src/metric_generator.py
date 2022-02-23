@@ -14,6 +14,7 @@ import numpy as np
 import cv2
 from tqdm import tqdm
 from setup_tools import stereoBM_from_file, stereoSGBM_from_file
+from local_matching import Local_matching
 
 # import algo of disparity map calculation
 from census import faster_census_matching, naive_census_matching, disparity_from_error_map
@@ -34,10 +35,8 @@ def bad(I_ref: np.ndarray, I: np.ndarray, alpha: float):
     I_filtred = I.copy()
     I_filtred[I_filtred==-1] = np.inf    
     diff = I_filtred - I_ref
-    print("avant filtrage", diff.size)
     diff = diff[~np.isnan(diff)]
     diff = diff[~np.isinf(diff)]
-    print("après filtrage", diff.size)
     bad_pix = diff[diff>alpha]
     return bad_pix.size/I_ref.size
 
@@ -71,8 +70,9 @@ def main():
         columns=["data", "execution_time"] + list(f_error.keys())
     )
     print(df)
-    stereo = stereoBM_from_file("results/param.pkl")
-    stereo.setMinDisparity(0)
+    # stereo = stereoBM_from_file("results/param.pkl")
+    # stereo.setMinDisparity(0)
+    stereo = Local_matching()
     # iter on dataset
     for data in tqdm(datas_to_process):
         # open image 
@@ -81,8 +81,8 @@ def main():
         img1 = cv2.imread((data/'im1.png').as_posix(), cv2.IMREAD_GRAYSCALE)
 
         # open GS disp_map
-        map_ref0 = read_pfm(data/'disp0.pfm')
-        map_ref1 = read_pfm(data/'disp1.pfm')
+        # map_ref0 = read_pfm(data/'disp0.pfm')
+        # map_ref1 = read_pfm(data/'disp1.pfm')
 
         map_ref0 = loader.load_pfm(data/'disp0.pfm')
         map_ref1 = loader.load_pfm(data/'disp1.pfm')
@@ -95,7 +95,7 @@ def main():
 
         start = time.time()
         # process each algo on stereocouple
-        disparity_map = stereo.compute(img0, img1)/16
+        disparity_map = stereo.compute(img0, img1)
         end_time = time.time()
         exec_time = end_time - start
         
@@ -126,14 +126,14 @@ def main():
         errormap_to_show[np.isnan(errormap_to_show)] = 0
         errormap_to_show[np.isinf(errormap_to_show)] = 0
 
-        plt.subplot(2,2,3)
-        plt.imshow(np.abs(errormap_to_show), 'gray')
-        plt.title("error /0")
-        plt.subplot(2,2,4)
-        plt.imshow(img0, "gray")
-        plt.title("img0")
+        # plt.subplot(2,2,3)
+        # plt.imshow(np.abs(errormap_to_show), 'gray')
+        # plt.title("error /0")
+        # plt.subplot(2,2,4)
+        # plt.imshow(img0, "gray")
+        # plt.title("img0")
 
-        plt.show()
+        # plt.show()
 
         # del cost_map
         del disparity_map
