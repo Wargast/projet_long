@@ -1,3 +1,4 @@
+from re import I
 import numpy as np
 from tqdm import tqdm
 import census_c
@@ -266,7 +267,10 @@ if __name__ == "__main__":
     matcher = local_matching()
     error_map = matcher.compute(i_left,i_right)
     matcher.optimisation = "python"
+    matcher.methode = "ssd"
     error_map2 = matcher.compute(i_left,i_right)
+    matcher.optimisation = "python_naif"
+    # error_map3 = matcher.compute(i_left,i_right)
     # print(np.array_equal(error_map, error_map2))
 
     # prof = pprofile.Profile()
