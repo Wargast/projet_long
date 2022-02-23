@@ -3,7 +3,7 @@ from tqdm import tqdm
 import census_c
 import cv2
 import time
-import pprofile
+# import pprofile
 
 
 def naive_census_transform(i: np.ndarray, block_size: int = 3) -> np.ndarray:
