@@ -134,25 +134,6 @@ def faster_census_matching(
     max_disparity: int = 64
 ) -> np.ndarray:
 
-    (h1, l1) = i_right.shape
-    (h2, l2) = i_left.shape
-
-    if h1 != h2:
-        raise ValueError("Both images must have the same height")
-
-    # only consider the pixels where the block doesn't go out of the image
-    h1_cropped = h1 - block_size + 1
-    l1_cropped = l1 - block_size + 1
-
-    # calculate the bistrings for the first image :
-    bit_strings_1 = faster_census_transform(i_right, block_size=block_size)
-
-    l2_cropped = l2 - block_size + 1
-
-    # calculate the bitstrings for the second image
-    bit_strings_2 = faster_census_transform(i_left, block_size=block_size)
-
-    # disparity_map = np.full((h1, l1), np.inf)
 
     error_map = np.full(
         (h1_cropped, l1_cropped, max_disparity + 1),
@@ -161,8 +142,8 @@ def faster_census_matching(
     )
 
     for d in tqdm(range(max_disparity + 1)):
-        right = bit_strings_1[:, 0 : min(l2_cropped - d, l1_cropped), :]
-        left = bit_strings_2[:, d:, :]
+        right = bit_strings_r[:, 0 : min(l2_cropped - d, l1_cropped), :]
+        left = bit_strings_l[:, d:, :]
 
         error_map[:, 0 : min(l2_cropped - d, l1_cropped), d] = np.sum(right != left, axis=2)
 
@@ -192,50 +173,48 @@ def disparity_from_error_map(
 
 if __name__ == "__main__":
     i_left = cv2.imread("./datas/middlebury/artroom1/im0.png", cv2.IMREAD_GRAYSCALE)
-
     i_right = cv2.imread("./datas/middlebury/artroom1/im1.png", cv2.IMREAD_GRAYSCALE)
+    
+    # i_left = np.arange(16, dtype=np.uint8).reshape(4,4)
+    # i_right = np.arange(16, dtype=np.uint8).reshape(4,4)
+
+    block_size = 7
+
+    a = time.perf_counter()
+    bit_strings_l = census_c.census_transform(i_left, block_size)
+    bit_strings_r = census_c.census_transform(i_right, block_size)
+    b = time.perf_counter()
+
+    print(f"temps de calcul census transform cython {b - a} s")
 
     (h1, l1) = i_right.shape
     (h2, l2) = i_left.shape
 
-    block_size = 9
-
-    max_disparity = 64
+    max_disparity = 150
 
     h1_cropped = h1 - block_size + 1
     l1_cropped = l1 - block_size + 1
     l2_cropped = l2 - block_size + 1
 
-    a = time.perf_counter()
-    bs_r = faster_census_transform(i_right, block_size=block_size)
-    bs_l = faster_census_transform(i_left, block_size=block_size)
-    b = time.perf_counter()
-    print(f"temps de calcul census transform : {b - a} s")
-    error_map = census_c.census_matching(bs_l, bs_r, h1_cropped, l1_cropped, l2_cropped, block_size=block_size, max_disparity=max_disparity)
     c = time.perf_counter()
-    print(f"temps de calcul census matching cython : {c - b} s")
+    error_map = census_c.census_matching_2(bit_strings_l, bit_strings_r, h1_cropped, l1_cropped, l2_cropped, block_size=block_size, max_disparity=max_disparity)
+    d = time.perf_counter()
 
-    # error_map2 = faster_census_matching(bs_l, bs_r, h1_cropped, l1_cropped, l2_cropped, block_size=block_size, max_disparity=max_disparity)
-    # d = time.perf_counter()
-    # print(f"temps numpy : {c - b}")
+    print(f"temps de calcul census matching cython {d - c} s")
+
+
+    # e = time.perf_counter()
+    # bit_strings_l_2 = faster_census_transform(i_left, block_size)
+    # bit_strings_r_2 = faster_census_transform(i_right, block_size)
+    # f = time.perf_counter()
+    # print(f"temps de calcul census transform numpy {f - e} s")
+    # error_map2 = faster_census_matching(bit_strings_l_2, bit_strings_r_2, h1_cropped, l1_cropped, l2_cropped, block_size=block_size, max_disparity=max_disparity)
+    # g = time.perf_counter()
+    # print(f"temps de calcul census matching numpy {g - f} s")
 
     # print(np.array_equal(error_map, error_map2))
 
-    
-    
 
-    # prof = pprofile.Profile()
 
-    # with prof:
-    #     error_map = faster_census_matching(
-    #         i_left, i_right, block_size=15, max_disparity=150
-    #     )
 
-    #     disparity_map = disparity_from_error_map(
-    #         error_map, block_size=15, cost_threshold=100
-    #     )
 
-    # prof.dump_stats("profiling.txt")
-
-    # # np.save("disp_census_artroom1.npy", disparity_map)
-    # np.save("error_map_census_artroom1.npy", error_map)

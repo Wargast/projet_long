@@ -5,6 +5,49 @@ np.import_array()
 
 cimport cython
 
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+cdef inline void line_census_transform(np.uint64_t[:, ::1] bit_strings, 
+                                       np.uint8_t[:, ::1] im, 
+                                       int u,
+                                       int block_size, 
+                                       int l_cropped) nogil:
+
+    cdef int half_block_size = block_size // 2
+    cdef int v
+    cdef int i, j
+    cdef int center_value
+    cdef np.uint64_t bit_str
+
+    for v in range(l_cropped):
+        bit_str = 0
+        center_value = im[u + half_block_size, v + half_block_size]
+        for i in range(block_size):
+            for j in range(block_size):
+                bit_str = (bit_str << 1) | (im[u + i, v + j] < center_value)
+        bit_strings[u, v] = bit_str
+
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+def census_transform(np.uint8_t[:, ::1] im, int block_size):
+    cdef int h = im.shape[0]
+    cdef int l = im.shape[1]
+    cdef int h_cropped = h - block_size + 1
+    cdef int l_cropped = l - block_size + 1
+
+    cdef np.uint64_t[:, ::1] bit_strings = np.zeros((h_cropped, l_cropped), dtype=np.uint64)
+    
+    cdef int u
+
+    for u in prange(h_cropped, nogil=True, schedule='static'):
+        line_census_transform(bit_strings, im, u, block_size, l_cropped)
+                    
+    return bit_strings
+
+
+
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 cdef inline void compute_cost(np.uint8_t[:, :, ::1] bit_strings_l, 
@@ -62,3 +105,85 @@ def census_matching(np.uint8_t[:, :, ::1] bit_strings_l,
     return error_map
 
 
+
+
+cdef inline int hamming_distance(np.uint64_t a, np.uint64_t b) nogil:
+    cdef np.uint64_t x = a^b
+    cdef int c = 0
+    while x != 0:
+        x &= x-1
+        c += 1
+    return c
+
+
+
+cdef inline int faster_hamming_distance(np.uint64_t a, np.uint64_t b) nogil:
+    cdef np.uint64_t x = a^b
+
+    #SWAR popcount
+    cdef np.uint64_t k1 = 6148914691236517205 #0x5555555555555555
+    cdef np.uint64_t k2 = 3689348814741910323 #0x3333333333333333
+    cdef np.uint64_t k4 = 1085102592571150095 #0x0f0f0f0f0f0f0f0f
+    cdef np.uint64_t kf = 72340172838076673 #0x0101010101010101
+
+    x = x - ((x >> 1) & k1) #put count of each 2 bits into those 2 bits
+    x = (x & k2) + ((x >> 2) & k2) #put count of each 4 bits into those 4 bits
+    x = (x + (x >> 4)) & k4 #put count of each 8 bits into those 8 bits
+    x = (x * kf) >> 56 #returns 8 most significant bits of x + (x<<8) + (x<<16) + (x<<24) + ...
+    
+    return x;
+
+
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+cdef inline void compute_cost_2(np.uint64_t[:, ::1] bit_strings_l, 
+                  np.uint64_t[:, ::1] bit_strings_r, 
+                  np.uint16_t[:, :, ::1] error_map,
+                  int u, 
+                  int l1_cropped, 
+                  int l2_cropped,
+                  int max_disparity,
+                  int block_size_squared) nogil:
+
+    cdef int cost
+    cdef int v1, v2, d, i
+
+    for v1 in range(l1_cropped):
+        for d in range(max_disparity + 1):
+            cost = 0
+            v2 = v1 + d
+            if v2 < l2_cropped:
+                cost = faster_hamming_distance(bit_strings_r[u, v1], bit_strings_l[u, v2])
+                error_map[u, v1, d] = cost
+    
+
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+def census_matching_2(np.uint64_t[:, ::1] bit_strings_l, 
+                    np.uint64_t[:, ::1] bit_strings_r,
+                    int h1_cropped,
+                    int l1_cropped,
+                    int l2_cropped,
+                    int block_size, 
+                    int max_disparity):
+
+    cdef int u
+    cdef int v1
+    cdef int d
+    cdef int v2
+    cdef int i
+    cdef int block_size_squared = block_size * block_size
+    cdef np.uint16_t cost
+
+    cdef np.uint16_t[:, :, ::1] error_map = np.full(
+        (h1_cropped, l1_cropped, max_disparity + 1),
+        np.iinfo(np.uint16).max,
+        dtype=np.uint16,
+    )
+
+    for u in prange(h1_cropped, nogil=True, schedule='static'):
+        compute_cost_2(bit_strings_l, bit_strings_r, error_map, u, l1_cropped, l2_cropped, max_disparity, block_size_squared)
+    
+    return error_map
