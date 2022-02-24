@@ -3,7 +3,6 @@ from tqdm import tqdm
 import census_c
 import cv2
 import time
-import pprofile
 
 
 def naive_census_transform(i: np.ndarray, block_size: int = 3) -> np.ndarray:
@@ -207,19 +206,20 @@ if __name__ == "__main__":
     l1_cropped = l1 - block_size + 1
     l2_cropped = l2 - block_size + 1
 
+    a = time.perf_counter()
     bs_r = faster_census_transform(i_right, block_size=block_size)
     bs_l = faster_census_transform(i_left, block_size=block_size)
-    
-    a = time.perf_counter()
-    error_map = census_c.census_matching(bs_l, bs_r, h1_cropped, l1_cropped, l2_cropped, block_size=block_size, max_disparity=max_disparity)
     b = time.perf_counter()
-    print(f"temps cython : {b - a}")
-    
-    error_map2 = faster_census_matching(bs_l, bs_r, h1_cropped, l1_cropped, l2_cropped, block_size=block_size, max_disparity=max_disparity)
+    print(f"temps de calcul census transform : {b - a} s")
+    error_map = census_c.census_matching(bs_l, bs_r, h1_cropped, l1_cropped, l2_cropped, block_size=block_size, max_disparity=max_disparity)
     c = time.perf_counter()
-    print(f"temps numpy : {c - b}")
+    print(f"temps de calcul census matching cython : {c - b} s")
 
-    print(np.array_equal(error_map, error_map2))
+    # error_map2 = faster_census_matching(bs_l, bs_r, h1_cropped, l1_cropped, l2_cropped, block_size=block_size, max_disparity=max_disparity)
+    # d = time.perf_counter()
+    # print(f"temps numpy : {c - b}")
+
+    # print(np.array_equal(error_map, error_map2))
 
     
     
