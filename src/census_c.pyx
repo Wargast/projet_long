@@ -7,28 +7,28 @@ cimport cython
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-cdef compute_cost(np.uint8_t[:, :, ::1] bit_strings_l, 
-                                         np.uint8_t[:, :, ::1] bit_strings_r, 
-                                         np.uint16_t[:, :, ::1] error_map,
-                                         int u, 
-                                         int l1_cropped, 
-                                         int l2_cropped,
-                                         int max_disparity,
-                                         int block_size_squared):
+cdef inline void compute_cost(np.uint8_t[:, :, ::1] bit_strings_l, 
+                  np.uint8_t[:, :, ::1] bit_strings_r, 
+                  np.uint16_t[:, :, ::1] error_map,
+                  int u, 
+                  int l1_cropped, 
+                  int l2_cropped,
+                  int max_disparity,
+                  int block_size_squared) nogil:
+
     cdef int cost
     cdef int v1, v2, d, i
 
-    with nogil:
-        for v1 in range(l1_cropped):
-            for d in range(max_disparity + 1):
-                cost = 0
-                v2 = v1 + d
-                if v2 < l2_cropped:
-                    for i in range(block_size_squared):
-                        if bit_strings_r[u, v1, i] != bit_strings_l[u, v2, i]:
-                            cost += 1
-                
-                    error_map[u, v1, d] = cost
+    for v1 in range(l1_cropped):
+        for d in range(max_disparity + 1):
+            cost = 0
+            v2 = v1 + d
+            if v2 < l2_cropped:
+                for i in range(block_size_squared):
+                    if bit_strings_r[u, v1, i] != bit_strings_l[u, v2, i]:
+                        cost += 1
+            
+                error_map[u, v1, d] = cost
     
 
 
@@ -56,9 +56,8 @@ def census_matching(np.uint8_t[:, :, ::1] bit_strings_l,
         dtype=np.uint16,
     )
 
-    for u in prange(h1_cropped, nogil=True):
-        with gil:
-            compute_cost(bit_strings_l, bit_strings_r, error_map, u, l1_cropped, l2_cropped, max_disparity, block_size_squared)
+    for u in prange(h1_cropped, nogil=True, schedule='static'):
+        compute_cost(bit_strings_l, bit_strings_r, error_map, u, l1_cropped, l2_cropped, max_disparity, block_size_squared)
     
     return error_map
 

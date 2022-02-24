@@ -3,6 +3,7 @@ import pickle
 from pprint import pprint
 import time
 from unittest import result
+from local_matching import Local_matching
 from pypfm import PFMLoader
 from pathlib import Path
 import pandas as pd
@@ -15,7 +16,7 @@ from setup_tools import (parse_calib_file, parse_pickle,
 ######## var #########
 
 loader = PFMLoader(color=False, compress=False)
-dataset_path = Path("datas/middlebury/chess1")
+dataset_path = Path("datas/middlebury/curule1")
 tuned_params = Path("results/param.pkl")
 calib_params = parse_calib_file(dataset_path/'calib.txt')
 pprint(calib_params)
@@ -50,19 +51,24 @@ def recontruction(disparity, Q):
 
 
 disparity = loader.load_pfm(dataset_path/'disp0.pfm')
+disparity = np.squeeze(disparity)
+disparity = np.flipud(disparity)
 # pfm1 = loader.load_pfm(dataset_path/'disp1.pfm')
 img0 = cv2.imread((dataset_path/"im0.png").as_posix(), cv2.IMREAD_GRAYSCALE)
 img1 = cv2.imread((dataset_path/"im1.png").as_posix(), cv2.IMREAD_GRAYSCALE)
 
 
-stereo = stereoBM_from_file(tuned_params)
-stereo = stereoSGBM_from_file(tuned_params)
+# stereo = stereoSGBM_from_file(tuned_params)
+# stereo = stereoBM_from_file(tuned_params)
+# disparity = stereo.compute(img0, img1)/16
 
-# Compute the disparity image
-disparity = stereo.compute(img0, img1)/16.
-print(f"bound: [{disparity.min()}, {disparity.max()}]")
-disparity[disparity <= 80] = np.nan
-print(f"bound: [{disparity.min()}, {disparity.max()}]")
+stereo = Local_matching(max_disparity=128, cost_threshold=1)
+disparity = stereo.compute(img0, img1)
+
+print(f"bound: [{disparity.min()}, {disparity.max()}], nb points:{np.sum(~np.isnan(disparity))}")
+disparity[disparity <= 12] = np.nan
+disparity[disparity >= 300] = np.nan
+print(f"bound: [{disparity.min()}, {disparity.max()}], nb points:{np.sum(~np.isnan(disparity))}")
     
 points_p = recontruction(disparity, Q)
 point_cloud = pv.PolyData(points_p)

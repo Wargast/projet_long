@@ -8,3 +8,4 @@ venv/
 *.html
 *.pyd
 *.so
+*.csv
