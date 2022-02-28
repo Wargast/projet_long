@@ -62,10 +62,7 @@ def faster_census_transform(im: np.ndarray, block_size: int) -> np.ndarray:
 
 
 def naive_census_matching(
-    im_left: np.ndarray,
-    im_right: np.ndarray,
-    block_size: int,
-    max_disparity: int
+    im_left: np.ndarray, im_right: np.ndarray, block_size: int, max_disparity: int
 ) -> np.ndarray:
 
     (h1, l1) = im_left.shape
@@ -121,10 +118,7 @@ def naive_census_matching(
 
 
 def faster_census_matching(
-    im_left: np.ndarray,
-    im_right: np.ndarray,
-    block_size: int,
-    max_disparity: int
+    im_left: np.ndarray, im_right: np.ndarray, block_size: int, max_disparity: int
 ) -> np.ndarray:
 
     (h1, l1) = im_right.shape
@@ -168,24 +162,26 @@ def faster_census_matching(
 
 
 def disparity_from_error_map(
-    error_map: np.ndarray, block_size: int, cost_threshold: int = 125
+    error_map_l: np.ndarray, error_map_r: np.ndarray, block_size: int
 ) -> np.ndarray:
-    (h_cropped, l_cropped, _) = error_map.shape
+
     half_block_size = block_size // 2
 
-    errors = np.min(error_map, axis=2)
-    disparity_map = np.argmin(error_map, axis=2).astype(np.float32)
+    errors_left = np.min(error_map_l, axis=2)
+    errors_right = np.min(error_map_l, axis=2)
+    disparity_map_left = np.argmin(error_map_l, axis=2).astype(np.float32)
+    disparity_map_right = np.argmin(error_map_r, axis=2).astype(np.float32)
 
-    disparity_map[errors > cost_threshold] = np.inf
+    
 
-    disparity_map = np.pad(
-        disparity_map,
-        (half_block_size, half_block_size),
-        mode='constant',
-        constant_values=np.inf
-    )
+    # disparity_map = np.pad(
+    #     disparity_map,
+    #     (half_block_size, half_block_size),
+    #     mode="constant",
+    #     constant_values=np.inf,
+    # )
 
-    return disparity_map
+    return disparity_map_left
 
 
 if __name__ == "__main__":
@@ -196,20 +192,22 @@ if __name__ == "__main__":
     max_disparity = 64
 
     a = time.perf_counter()
-    error_map_cython_l, error_map_cython_r = census_c.census_matching_2(im_left, im_right, block_size, max_disparity)
+    error_map_cython_l, error_map_cython_r = census_c.census_matching(
+        im_left, im_right, block_size, max_disparity
+    )
     b = time.perf_counter()
     print(f"temps de calcul census matching cython {b - a} s")
-    c = time.perf_counter()
-    error_map_numpy_l, error_map_numpy_r = faster_census_matching(im_left, im_right, block_size, max_disparity)
-    d = time.perf_counter()
-    print(f"temps de calcul census matching numpy {d - c} s")
 
-    print(np.array_equal(error_map_cython_l, error_map_numpy_l))
-    print(np.array_equal(error_map_cython_r, error_map_numpy_r))
+    disp_map = disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size)
 
 
 
+    # c = time.perf_counter()
+    # error_map_numpy_l, error_map_numpy_r = faster_census_matching(
+    #     im_left, im_right, block_size, max_disparity
+    # )
+    # d = time.perf_counter()
+    # print(f"temps de calcul census matching numpy {d - c} s")
 
-
-
-
+    # print(np.array_equal(error_map_cython_l, error_map_numpy_l))
+    # print(np.array_equal(error_map_cython_r, error_map_numpy_r))
