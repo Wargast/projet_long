@@ -80,7 +80,8 @@ cdef inline int faster_hamming_distance(np.uint64_t a, np.uint64_t b) nogil:
 @cython.wraparound(False) 
 cdef inline void compute_line_costs(np.uint64_t[:, ::1] bit_strings_l, 
                                     np.uint64_t[:, ::1] bit_strings_r, 
-                                    np.uint16_t[:, :, ::1] error_map,
+                                    np.uint16_t[:, :, ::1] error_map_l,
+                                    np.uint16_t[:, :, ::1] error_map_r,
                                     int u, 
                                     int l1_cropped, 
                                     int l2_cropped,
@@ -95,12 +96,13 @@ cdef inline void compute_line_costs(np.uint64_t[:, ::1] bit_strings_l,
             v2 = v1 + d
             if v2 < l2_cropped:
                 cost = faster_hamming_distance(bit_strings_r[u, v1], bit_strings_l[u, v2])
-                error_map[u, v1, d] = cost
+                error_map_r[u, v1, d] = cost
+                error_map_l[u, v2, d] = cost
     
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def census_matching_2(np.uint8_t[:, ::1] im_left,
+def census_matching(np.uint8_t[:, ::1] im_left,
                       np.uint8_t[:, ::1] im_right,
                       int block_size, 
                       int max_disparity):
@@ -123,8 +125,14 @@ def census_matching_2(np.uint8_t[:, ::1] im_left,
     cdef np.uint64_t[:, ::1] bit_strings_l = census_transform(im_left, block_size)
     cdef np.uint64_t[:, ::1] bit_strings_r = census_transform(im_right, block_size)
 
-    cdef np.uint16_t[:, :, ::1] error_map = np.full(
+    cdef np.uint16_t[:, :, ::1] error_map_l = np.full(
         (h1_cropped, l1_cropped, max_disparity + 1),
+        np.iinfo(np.uint16).max,
+        dtype=np.uint16,
+    )
+
+    cdef np.uint16_t[:, :, ::1] error_map_r = np.full(
+        (h1_cropped, l2_cropped, max_disparity + 1),
         np.iinfo(np.uint16).max,
         dtype=np.uint16,
     )
@@ -132,9 +140,9 @@ def census_matching_2(np.uint8_t[:, ::1] im_left,
     cdef int u
 
     for u in prange(h1_cropped, nogil=True, schedule='static'):
-        compute_line_costs(bit_strings_l, bit_strings_r, error_map, u, l1_cropped, l2_cropped, max_disparity)
+        compute_line_costs(bit_strings_l, bit_strings_r, error_map_l, error_map_r, u, l1_cropped, l2_cropped, max_disparity)
     
-    return error_map
+    return error_map_l, error_map_r
 
 
 
