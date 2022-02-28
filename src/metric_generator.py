@@ -7,7 +7,6 @@ from unittest import result
 
 from matplotlib import pyplot as plt
 from pypfm import PFMLoader
-from pfm import read_pfm
 from pathlib import Path
 import pandas as pd
 import numpy as np
