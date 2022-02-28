@@ -67,6 +67,8 @@ class PFMLoader:
         # print('At load: ', self.shape, data.dtype, np.ascontiguousarray(data, dtype=np.dtype('uint8').shape))
 
         data = np.reshape(data, self.shape)
+        data = np.squeeze(data)
+        data = np.flipud(data)
         return data
 
     def save_pfm(self, path, image, scale=1):
