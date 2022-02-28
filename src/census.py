@@ -167,21 +167,36 @@ def disparity_from_error_map(
 
     half_block_size = block_size // 2
 
-    errors_left = np.min(error_map_l, axis=2)
-    errors_right = np.min(error_map_l, axis=2)
     disparity_map_left = np.argmin(error_map_l, axis=2).astype(np.float32)
     disparity_map_right = np.argmin(error_map_r, axis=2).astype(np.float32)
 
-    
+    (h, l, _) = error_map_l.shape
 
-    # disparity_map = np.pad(
-    #     disparity_map,
-    #     (half_block_size, half_block_size),
-    #     mode="constant",
-    #     constant_values=np.inf,
-    # )
+    ind = np.meshgrid(range(h), range(l), indexing='ij')
 
-    return disparity_map_left
+    ind2 = (ind[0], (ind[1] - disparity_map_left).astype(np.uint16))
+
+    d2 = disparity_map_right[ind2]
+
+    disparity_map_left_filtered = disparity_map_left.copy()
+
+    disparity_map_left_filtered[d2 != disparity_map_left] = np.inf
+
+    disparity_map_left_filtered = np.pad(
+        disparity_map_left_filtered,
+        (half_block_size, half_block_size),
+        mode="constant",
+        constant_values=np.inf,
+    )
+
+    disparity_map_left = np.pad(
+        disparity_map_left,
+        (half_block_size, half_block_size),
+        mode="constant",
+        constant_values=np.inf,
+    )
+
+    return disparity_map_left_filtered, disparity_map_left
 
 
 if __name__ == "__main__":
@@ -198,7 +213,7 @@ if __name__ == "__main__":
     b = time.perf_counter()
     print(f"temps de calcul census matching cython {b - a} s")
 
-    disp_map = disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size)
+    disp_map_filtered, disp_map = disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size)
 
 
 
