@@ -62,7 +62,7 @@ def main():
     # stereo = stereoBM_from_file("results/param.pkl")
     # stereo.setMinDisparity(0)
     stereo = Local_matching()
-    stereo = Local_matching(max_disparity=128,block_size=9, cost_threshold=5)
+    stereo = Local_matching(max_disparity=150,block_size=7, cost_threshold=5)
     # iter on dataset
     for data in tqdm(datas_to_process):
         # open image 
@@ -75,11 +75,7 @@ def main():
         # map_ref1 = read_pfm(data/'disp1.pfm')
 
         map_ref0 = loader.load_pfm(data/'disp0.pfm')
-        map_ref0 = np.squeeze(map_ref0)
-        map_ref0 = np.flipud(map_ref0)
         map_ref1 = loader.load_pfm(data/'disp1.pfm')
-        map_ref1 = np.squeeze(map_ref1)
-        map_ref1 = np.flipud(map_ref1)
 
         # check if GS is transposed 
         # if map_ref.shape != img0.shape[:2]:
@@ -99,7 +95,7 @@ def main():
         # make diff and filter non revelant values
         I_filtred = disparity_map.copy()
         I_filtred[I_filtred<=0] = np.inf 
-        I_diff = map_ref1 - I_filtred
+        I_diff = map_ref0 - I_filtred
         I_diff = I_diff[~np.isnan(I_diff)]
         I_diff = I_diff[~np.isinf(I_diff)]   
         df.iloc[len(df.index)-1, 2] = I_diff.size/disparity_map.size
@@ -120,10 +116,10 @@ def main():
         plt.imshow(disparity_map, 'gray')
         plt.title("disparity map 0")
         plt.subplot(2,2,2)
-        plt.imshow(map_ref1, 'gray')
+        plt.imshow(map_ref0, 'gray')
         plt.title("Goal Stantard disparity map 0")
         
-        errormap_to_show = disparity_map - map_ref1
+        errormap_to_show = disparity_map - map_ref0
         errormap_to_show[np.isnan(errormap_to_show)] = 0
         errormap_to_show[np.isinf(errormap_to_show)] = 0
 
