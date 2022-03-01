@@ -48,7 +48,7 @@ class Local_matching:
 
         return census_c.disparity_from_error_map(
             error_map_l, error_map_r, self.block_size, self.seuil_symmetrie
-        ).base
+        )
 
 
 if __name__ == "__main__":

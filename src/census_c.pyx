@@ -160,7 +160,7 @@ def census_matching(np.uint8_t[:, ::1] im_left,
     for u in prange(h1_cropped, nogil=True, schedule='static'):
         compute_line_costs(bit_strings_l, bit_strings_r, error_map_l, error_map_r, u, l1_cropped, l2_cropped, max_disparity, nb_strings)
     
-    return error_map_l, error_map_r
+    return error_map_l.base, error_map_r.base
 
 
 @cython.boundscheck(False)
@@ -244,7 +244,7 @@ def disparity_from_error_map(np.uint16_t[:, :, ::1] error_map_l,
     for u in prange(h1_cropped, nogil=True, schedule='static'):
         check_line_symmetry(disparity_map_l, disparity_map_r, disparity_map_l_filtered, u, l1_cropped, half_block_size, seuil_symmetrie)
 
-    return disparity_map_l_filtered
+    return disparity_map_l_filtered.base
 
 
 # @cython.boundscheck(False) 
