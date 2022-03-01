@@ -162,7 +162,7 @@ def faster_census_matching(
 
 
 def disparity_from_error_map(
-    error_map_l: np.ndarray, error_map_r: np.ndarray, block_size: int
+    error_map_l: np.ndarray, error_map_r: np.ndarray, block_size: int, seuil_symmetrie: int
 ) -> np.ndarray:
 
     half_block_size = block_size // 2
@@ -180,7 +180,7 @@ def disparity_from_error_map(
 
     disparity_map_left_filtered = disparity_map_left.copy()
 
-    disparity_map_left_filtered[d2 != disparity_map_left] = np.inf
+    disparity_map_left_filtered[np.abs(d2 - disparity_map_left) > seuil_symmetrie] = np.inf
 
     disparity_map_left_filtered = np.pad(
         disparity_map_left_filtered,
@@ -220,12 +220,12 @@ if __name__ == "__main__":
 
 
     c = time.perf_counter()
-    disp_map_filtered = disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size)
+    disp_map_filtered = disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size, seuil_symmetrie=5)
     d = time.perf_counter()
     print(f"temps de calcul disparités numpy {d - c} s")
 
     e = time.perf_counter()
-    disp_map_cython_filtered = census_c.disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size)
+    disp_map_cython_filtered = census_c.disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size, seuil_symmetrie=5)
     f = time.perf_counter()
     print(f"temps de calcul disparités cython {f - e} s")
 

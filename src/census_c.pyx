@@ -191,11 +191,12 @@ cdef void check_line_symmetry(np.int16_t[:, ::1] disparity_map_l,
                               np.float32_t[:, ::1] disparity_map_l_filtered,
                               int u,
                               int l1_cropped,
-                              int half_block_size) nogil:
+                              int half_block_size,
+                              int seuil_symmetrie) nogil:
     cdef int v1, v2
     for v1 in range(l1_cropped):
         v2 = v1 - disparity_map_l[u, v1]
-        if disparity_map_l[u, v1] == disparity_map_r[u, v2]:
+        if (disparity_map_l[u, v1] - disparity_map_r[u, v2]) <= seuil_symmetrie and (disparity_map_l[u, v1] - disparity_map_r[u, v2]) >= -seuil_symmetrie:
             disparity_map_l_filtered[u + half_block_size, v1 + half_block_size] = disparity_map_l[u, v1]
 
     
@@ -203,7 +204,8 @@ cdef void check_line_symmetry(np.int16_t[:, ::1] disparity_map_l,
 @cython.wraparound(False)
 def disparity_from_error_map(np.uint16_t[:, :, ::1] error_map_l,
                              np.uint16_t[:, :, ::1] error_map_r,
-                             int block_size):
+                             int block_size,
+                             int seuil_symmetrie=0):
 
     cdef int h1_cropped = error_map_l.shape[0]
     cdef int l1_cropped = error_map_l.shape[1]
@@ -240,7 +242,7 @@ def disparity_from_error_map(np.uint16_t[:, :, ::1] error_map_l,
         compute_line_disparity(error_map_r, disparity_map_r, u, num_disparities, l2_cropped)
 
     for u in prange(h1_cropped, nogil=True, schedule='static'):
-        check_line_symmetry(disparity_map_l, disparity_map_r, disparity_map_l_filtered, u, l1_cropped, half_block_size)
+        check_line_symmetry(disparity_map_l, disparity_map_r, disparity_map_l_filtered, u, l1_cropped, half_block_size, seuil_symmetrie)
 
     return disparity_map_l_filtered
 
