@@ -50,20 +50,17 @@ def recontruction(disparity, Q):
 
 
 
-disparity = loader.load_pfm(dataset_path/'disp0.pfm')
-disparity = np.squeeze(disparity)
-disparity = np.flipud(disparity)
-# pfm1 = loader.load_pfm(dataset_path/'disp1.pfm')
+# disparity = loader.load_pfm(dataset_path/'disp0.pfm')
 img0 = cv2.imread((dataset_path/"im0.png").as_posix(), cv2.IMREAD_GRAYSCALE)
 img1 = cv2.imread((dataset_path/"im1.png").as_posix(), cv2.IMREAD_GRAYSCALE)
 
 
-# stereo = stereoSGBM_from_file(tuned_params)
+stereo = stereoSGBM_from_file(tuned_params)
 # stereo = stereoBM_from_file(tuned_params)
-# disparity = stereo.compute(img0, img1)/16
+disparity = stereo.compute(img0, img1)/16
 
-stereo = Local_matching(max_disparity=128, cost_threshold=1)
-disparity = stereo.compute(img0, img1)
+# stereo = Local_matching(max_disparity=128, cost_threshold=1)
+# disparity = stereo.compute(img0, img1)
 
 print(f"bound: [{disparity.min()}, {disparity.max()}], nb points:{np.sum(~np.isnan(disparity))}")
 disparity[disparity <= 12] = np.nan

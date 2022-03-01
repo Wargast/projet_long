@@ -10,7 +10,6 @@ loader = PFMLoader(color=False, compress=False)
 numDisparities = 16*20
 blockSize=21
 dataset_path = Path("datas/middlebury/chess1")
-
 ###########################
 
 
@@ -24,10 +23,7 @@ i_right = cv2.imread("./datas/middlebury/chess1/im1.png", cv2.IMREAD_GRAYSCALE)
 stereo = Local_matching(max_disparity=128,block_size=9)
 disparity_map = stereo.compute(i_left, i_right)
 
-
 disparity_map_GS = loader.load_pfm("./datas/middlebury/chess1/disp0.pfm")
-disparity_map_GS = np.squeeze(disparity_map_GS)
-disparity_map_GS = np.flipud(disparity_map_GS)
 
 plt.figure(dataset_path.as_posix())#, figsize=(160,90))
 plt.subplot(1,2,1)
@@ -39,14 +35,3 @@ plt.title("Goal Stantard disparity map")
 plt.show()
 
 exit()
-
-
-im = disparity_map / np.max(disparity_map)
-
-im = (im * 255).astype(np.uint8)
-
-# im = cv2.resize(im, (540, 960))
-
-cv2.imshow('test', im)
-
-cv2.waitKey(0)
