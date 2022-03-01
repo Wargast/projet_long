@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from re import I
 import sys
 from typing import Tuple
+from matplotlib import pyplot as plt
 import numpy as np
 from tqdm import tqdm
 import census_c
@@ -19,15 +20,6 @@ class Direction:
     direction: Tuple[int, int]
     name: str
 
-# 8 defined directions for sgm
-N = Direction(direction=(0, -1), name='north')
-NE = Direction(direction=(1, -1), name='north-east')
-E = Direction(direction=(1, 0), name='east')
-SE = Direction(direction=(1, 1), name='south-east')
-S = Direction(direction=(0, 1), name='south')
-SW = Direction(direction=(-1, 1), name='south-west')
-W = Direction(direction=(-1, 0), name='west')
-NW = Direction(direction=(-1, -1), name='north-west')
 
 
 class Paths:
@@ -35,9 +27,18 @@ class Paths:
         """
         represent the relation between the directions.
         """
-        self.paths = [N, NE, E, SE, S, SW, W, NW]
+        # 8 defined directions for sgm
+        self.N = Direction(direction=(0, -1), name='north')
+        self.NE = Direction(direction=(1, -1), name='north-east')
+        self.E = Direction(direction=(1, 0), name='east')
+        self.SE = Direction(direction=(1, 1), name='south-east')
+        self.S = Direction(direction=(0, 1), name='south')
+        self.SW = Direction(direction=(-1, 1), name='south-west')
+        self.W = Direction(direction=(-1, 0), name='west')
+        self.NW = Direction(direction=(-1, -1), name='north-west')
+        self.paths = [self.N, self.NE, self.E, self.SE, self.S, self.SW, self.W, self.NW]
         self.size = len(self.paths)
-        self.effective_paths = [(E,  W), (SE, NW), (S, N), (SW, NE)]
+        self.effective_paths = [(self.E,  self.W), (self.SE, self.NW), (self.S, self.N), (self.SW, self.NE)]
  
 
 
@@ -49,8 +50,8 @@ class SM_matching:
         P2: int =120,
         csize: Tuple[int, int] =(7,7), 
         bsize: Tuple[int, int] =(3,3),
-        max_disparity: int =64,
-        block_size: int =9,
+        max_disparity: int =150,
+        block_size: int =31,
         cost_threshold: int =150,
         ):
         """__init__ instance de la classe local matching
@@ -69,17 +70,32 @@ class SM_matching:
         self.P2 = P2
         self.csize = csize
         self.bsize = bsize
+        self.paths = Paths()
                     
     def compute(self,i_left,i_right):
-        error_map_l, error_map_r = census_c.census_matching(
+        left_cost_volume, right_cost_volume = census_c.census_matching(
             i_left, i_right, self.block_size, self.max_disparity
         )
-        disp_from_left, _ = self._disparity_from_error_map(
-            error_map_l, 
-            error_map_r
-        )
-        return disp_from_left
+        print('\nStarting left aggregation computation...')
+        left_aggregation_volume = self.aggregate_costs(left_cost_volume.base)
+        # print('\nStarting right aggregation computation...')
+        # right_aggregation_volume = self.aggregate_costs(right_cost_volume)
+
+        print('\nSelecting best disparities...')
+        left_disparity_map = np.uint8(self.select_disparity(left_aggregation_volume))
+        # right_disparity_map = np.uint8(normalize(select_disparity(right_aggregation_volume), parameters))
+
+        return left_disparity_map
     
+    def select_disparity(aggregation_volume):
+        """
+        last step of the sgm algorithm, corresponding to equation 14 followed by winner-takes-all approach.
+        :param aggregation_volume: H x W x D x N array of matching cost for all defined directions.
+        :return: disparity image.
+        """
+        volume = np.sum(aggregation_volume, axis=3)
+        disparity_map = np.argmin(volume, axis=2)
+        return disparity_map
 
     def get_path_cost(self, slice, offset):
         """
@@ -98,8 +114,8 @@ class SM_matching:
         disparities = np.array(disparities).reshape(disparity_dim, disparity_dim)
 
         penalties = np.zeros(shape=(disparity_dim, disparity_dim), dtype=slice.dtype)
-        penalties[np.abs(disparities - disparities.T) == 1] = parameters.P1
-        penalties[np.abs(disparities - disparities.T) > 1] = parameters.P2
+        penalties[np.abs(disparities - disparities.T) == 1] = self.P1
+        penalties[np.abs(disparities - disparities.T) > 1] = self.P2
 
         minimum_cost_path = np.zeros(shape=(other_dim, disparity_dim), dtype=slice.dtype)
         minimum_cost_path[offset - 1, :] = slice[offset - 1, :]
@@ -130,7 +146,7 @@ class SM_matching:
         x_indices = []
 
         for i in range(0, dim):
-            if direction == SE.direction:
+            if direction == self.paths.SE.direction:
                 if offset < 0:
                     y_indices.append(-offset + i)
                     x_indices.append(0 + i)
@@ -138,7 +154,7 @@ class SM_matching:
                     y_indices.append(0 + i)
                     x_indices.append(offset + i)
 
-            if direction == SW.direction:
+            if direction == self.paths.SW.direction:
                 if offset < 0:
                     y_indices.append(height + offset - i)
                     x_indices.append(0 + i)
@@ -148,9 +164,7 @@ class SM_matching:
 
         return np.array(y_indices), np.array(x_indices)
 
-
-
-    def aggregate_costs(self, cost_volume, paths):
+    def aggregate_costs(self, cost_volume):
         """
         second step of the sgm algorithm, aggregates matching costs for N 
         possible directions (8 in this case).
@@ -168,12 +182,12 @@ class SM_matching:
         end = width - 1
 
         aggregation_volume = np.zeros(
-            shape=(height, width, disparities, paths.size), 
+            shape=(height, width, disparities, self.paths.size), 
             dtype=cost_volume.dtype
         )
 
         path_id = 0
-        for path in paths.effective_paths:
+        for path in self.paths.effective_paths:
             print('\tProcessing paths {} and {}...'.format(
                 path[0].name, path[1].name), end='')
             sys.stdout.flush()
@@ -186,7 +200,7 @@ class SM_matching:
             opposite_aggregation = np.copy(main_aggregation)
 
             main = path[0]
-            if main.direction == S.direction:
+            if main.direction == self.paths.S.direction:
                 for x in range(0, width):
                     south = cost_volume[0:height, x, :]
                     north = np.flip(south, axis=0)
@@ -194,7 +208,7 @@ class SM_matching:
                     opposite_aggregation[:, x, :] = np.flip(
                         self.get_path_cost(north, 1), axis=0)
 
-            if main.direction == E.direction:
+            if main.direction == self.paths.E.direction:
                 for y in range(0, height):
                     east = cost_volume[y, 0:width, :]
                     west = np.flip(east, axis=0)
@@ -202,7 +216,7 @@ class SM_matching:
                     opposite_aggregation[y, :, :] = np.flip(
                         self.get_path_cost(west, 1), axis=0)
 
-            if main.direction == SE.direction:
+            if main.direction == self.paths.SE.direction:
                 for offset in range(start, end):
                     south_east = cost_volume.diagonal(offset=offset).T
                     north_west = np.flip(south_east, axis=0)
@@ -210,19 +224,19 @@ class SM_matching:
                     y_se_idx, x_se_idx = self.get_indices(
                         offset, 
                         dim, 
-                        SE.direction, None
+                        self.paths.SE.direction, None
                     )
                     y_nw_idx = np.flip(y_se_idx, axis=0)
                     x_nw_idx = np.flip(x_se_idx, axis=0)
                     main_aggregation[y_se_idx, x_se_idx, :] = self.get_path_cost(south_east, 1)
                     opposite_aggregation[y_nw_idx, x_nw_idx, :] = self.get_path_cost(north_west, 1)
 
-            if main.direction == SW.direction:
+            if main.direction == self.paths.SW.direction:
                 for offset in range(start, end):
                     south_west = np.flipud(cost_volume).diagonal(offset=offset).T
                     north_east = np.flip(south_west, axis=0)
                     dim = south_west.shape[0]
-                    y_sw_idx, x_sw_idx = self.get_indices(offset, dim, SW.direction, height - 1)
+                    y_sw_idx, x_sw_idx = self.get_indices(offset, dim, self.paths.SW.direction, height - 1)
                     y_ne_idx = np.flip(y_sw_idx, axis=0)
                     x_ne_idx = np.flip(x_sw_idx, axis=0)
                     main_aggregation[y_sw_idx, x_sw_idx, :] = self.get_path_cost(south_west, 1)
@@ -236,9 +250,19 @@ class SM_matching:
             print('\t(done in {:.2f}s)'.format(dusk - dawn))
 
         return aggregation_volume
+
+
 if __name__ == "__main__":
     i_left = cv2.imread("./datas/middlebury/artroom1/im0.png", cv2.IMREAD_GRAYSCALE)
     i_right = cv2.imread("./datas/middlebury/artroom1/im1.png", cv2.IMREAD_GRAYSCALE)
 
     matcher = SM_matching()
-    error_map = matcher.compute(i_left,i_right)
+    a = t.perf_counter()
+    disparity = matcher.compute(i_left,i_right)
+    b = t.perf_counter()
+    print(f"temps de calcul : {b - a} s")
+
+    disparity[disparity==np.inf] = 0
+
+    plt.imshow(disparity, 'gray')
+    plt.show()

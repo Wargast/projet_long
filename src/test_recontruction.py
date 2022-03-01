@@ -56,16 +56,16 @@ img1 = cv2.imread((dataset_path/"im1.png").as_posix(), cv2.IMREAD_GRAYSCALE)
 
 
 # stereo = stereoSGBM_from_file(tuned_params)
-# stereo = stereoBM_from_file(tuned_params)
+# # stereo = stereoBM_from_file(tuned_params)
 # disparity = stereo.compute(img0, img1)/16
 
-stereo = Local_matching(max_disparity=150, block_size=11, method="census", seuil_symmetrie=5)
+stereo = Local_matching(max_disparity=300, block_size=31)
 disparity = stereo.compute(img0, img1)
 
 print(f"bound: [{disparity.min()}, {disparity.max()}], nb points:{np.sum(~np.isnan(disparity))}")
-disparity[disparity <= 20] = np.nan
+disparity[disparity <= 12] = np.nan
 print(f"bound: [{disparity.min()}, {disparity.max()}], nb points:{np.sum(~np.isnan(disparity))}")
     
 points_p = recontruction(disparity, Q)
 point_cloud = pv.PolyData(points_p)
-point_cloud.plot(eye_dome_lighting=True, point_size=1.0)
+point_cloud.plot(eye_dome_lighting=True, point_size=2.0)

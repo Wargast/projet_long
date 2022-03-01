@@ -61,8 +61,7 @@ def main():
     print(df)
     # stereo = stereoBM_from_file("results/param.pkl")
     # stereo.setMinDisparity(0)
-    stereo = Local_matching()
-    stereo = Local_matching(max_disparity=150,block_size=7, cost_threshold=5)
+    stereo = Local_matching(max_disparity=150,block_size=11)
     # iter on dataset
     for data in tqdm(datas_to_process):
         # open image 
@@ -113,6 +112,7 @@ def main():
 
         plt.figure(data.name)#, figsize=(160,90))
         plt.subplot(2,2,1)
+        disparity_map[np.isinf(disparity_map)] = 0
         plt.imshow(disparity_map, 'gray')
         plt.title("disparity map 0")
         plt.subplot(2,2,2)

@@ -55,7 +55,7 @@ if __name__ == "__main__":
     i_left = cv2.imread("./datas/middlebury/artroom1/im0.png", cv2.IMREAD_GRAYSCALE)
     i_right = cv2.imread("./datas/middlebury/artroom1/im1.png", cv2.IMREAD_GRAYSCALE)
 
-    matcher = Local_matching(max_disparity=150, block_size=11, method="census", seuil_symmetrie=10)
+    matcher = Local_matching(max_disparity=300, block_size=51, method="census")
     a = time.perf_counter()
     disparity = matcher.compute(i_left, i_right)
     b = time.perf_counter()
