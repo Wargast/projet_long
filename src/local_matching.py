@@ -3,6 +3,7 @@ import numpy as np
 from tqdm import tqdm
 import census_c
 import cv2
+import time
 import matplotlib.pyplot as plt
 
 
@@ -52,8 +53,11 @@ if __name__ == "__main__":
     i_left = cv2.imread("./datas/middlebury/artroom1/im0.png", cv2.IMREAD_GRAYSCALE)
     i_right = cv2.imread("./datas/middlebury/artroom1/im1.png", cv2.IMREAD_GRAYSCALE)
 
-    matcher = Local_matching(max_disparity=150, block_size=7, method="census")
+    matcher = Local_matching(max_disparity=150, block_size=31, method="census")
+    a = time.perf_counter()
     disparity = matcher.compute(i_left, i_right)
+    b = time.perf_counter()
+    print(f"temps de calcul : {b - a} s")
 
     disparity[disparity==np.inf] = 0
 

@@ -9,7 +9,7 @@ from numpy.math cimport INFINITY
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-cdef void line_census_transform(np.uint64_t[:, ::1] bit_strings, 
+cdef void line_census_transform(np.uint64_t[:, :, ::1] bit_strings, 
                                        np.uint8_t[:, ::1] im, 
                                        int u,
                                        int block_size, 
@@ -20,19 +20,29 @@ cdef void line_census_transform(np.uint64_t[:, ::1] bit_strings,
     cdef int i, j
     cdef int center_value
     cdef np.uint64_t bit_str
+    cdef int idx, idx_string
 
     for v in range(l_cropped):
         bit_str = 0
+        idx = 0
+        idx_string = 0
         center_value = im[u + half_block_size, v + half_block_size]
         for i in range(block_size):
             for j in range(block_size):
                 bit_str = (bit_str << 1) | (im[u + i, v + j] < center_value)
-        bit_strings[u, v] = bit_str
+                idx += 1
+                if idx == 64:
+                    bit_strings[u, v, idx_string] = bit_str
+                    bit_str = 0
+                    idx = 0
+                    idx_string += 1
+
+        bit_strings[u, v, idx_string] = bit_str
 
 
 @cython.boundscheck(False) 
 @cython.wraparound(False)  
-cdef np.uint64_t[:, ::1] census_transform(np.uint8_t[:, ::1] im, int block_size):
+cdef np.uint64_t[:, :, ::1] census_transform(np.uint8_t[:, ::1] im, int block_size):
 
     cdef int h = im.shape[0]
     cdef int l = im.shape[1]
@@ -41,7 +51,9 @@ cdef np.uint64_t[:, ::1] census_transform(np.uint8_t[:, ::1] im, int block_size)
 
     cdef int half_block_size = block_size // 2
 
-    cdef np.uint64_t[:, ::1] bit_strings = np.zeros((h_cropped, l_cropped), dtype=np.uint64)
+    cdef int nb_strings = (block_size * block_size) // 64 + 1 
+
+    cdef np.uint64_t[:, :, ::1] bit_strings = np.zeros((h_cropped, l_cropped, nb_strings), dtype=np.uint64)
     
     cdef int u
 
@@ -80,14 +92,15 @@ cdef inline int faster_hamming_distance(np.uint64_t a, np.uint64_t b) nogil:
 
 @cython.boundscheck(False) 
 @cython.wraparound(False) 
-cdef void compute_line_costs(np.uint64_t[:, ::1] bit_strings_l, 
-                             np.uint64_t[:, ::1] bit_strings_r, 
+cdef void compute_line_costs(np.uint64_t[:, :, ::1] bit_strings_l, 
+                             np.uint64_t[:, :, ::1] bit_strings_r, 
                              np.uint16_t[:, :, ::1] error_map_l,
                              np.uint16_t[:, :, ::1] error_map_r,
                              int u, 
                              int l1_cropped, 
                              int l2_cropped,
-                             int max_disparity) nogil:
+                             int max_disparity,
+                             int nb_strings) nogil:
 
     cdef int cost
     cdef int v1, v2, d, i
@@ -97,7 +110,8 @@ cdef void compute_line_costs(np.uint64_t[:, ::1] bit_strings_l,
             cost = 0
             v2 = v1 + d
             if v2 < l2_cropped:
-                cost = faster_hamming_distance(bit_strings_r[u, v1], bit_strings_l[u, v2])
+                for i in range(nb_strings):
+                    cost += faster_hamming_distance(bit_strings_r[u, v1, i], bit_strings_l[u, v2, i])
                 error_map_r[u, v1, d] = cost
                 error_map_l[u, v2, d] = cost
     
@@ -124,8 +138,10 @@ def census_matching(np.uint8_t[:, ::1] im_left,
     cdef int l1_cropped = l1 - block_size + 1
     cdef int l2_cropped = l2 - block_size + 1
 
-    cdef np.uint64_t[:, ::1] bit_strings_l = census_transform(im_left, block_size)
-    cdef np.uint64_t[:, ::1] bit_strings_r = census_transform(im_right, block_size)
+    cdef np.uint64_t[:, :, ::1] bit_strings_l = census_transform(im_left, block_size)
+    cdef np.uint64_t[:, :, ::1] bit_strings_r = census_transform(im_right, block_size)
+
+    cdef int nb_strings = (block_size * block_size) // 64 + 1 
 
     cdef np.uint16_t[:, :, ::1] error_map_l = np.full(
         (h1_cropped, l1_cropped, max_disparity + 1),
@@ -142,7 +158,7 @@ def census_matching(np.uint8_t[:, ::1] im_left,
     cdef int u
 
     for u in prange(h1_cropped, nogil=True, schedule='static'):
-        compute_line_costs(bit_strings_l, bit_strings_r, error_map_l, error_map_r, u, l1_cropped, l2_cropped, max_disparity)
+        compute_line_costs(bit_strings_l, bit_strings_r, error_map_l, error_map_r, u, l1_cropped, l2_cropped, max_disparity, nb_strings)
     
     return error_map_l, error_map_r
 

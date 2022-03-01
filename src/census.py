@@ -196,8 +196,15 @@ if __name__ == "__main__":
     im_left = cv2.imread("./datas/middlebury/artroom1/im0.png", cv2.IMREAD_GRAYSCALE)
     im_right = cv2.imread("./datas/middlebury/artroom1/im1.png", cv2.IMREAD_GRAYSCALE)
 
-    block_size = 7
+    block_size = 9
     max_disparity = 64
+
+    g = time.perf_counter()
+    error_map_numpy_l, error_map_numpy_r = faster_census_matching(
+        im_left, im_right, block_size, max_disparity
+    )
+    h = time.perf_counter()
+    print(f"temps de calcul census matching numpy {h - g} s")
 
     a = time.perf_counter()
     error_map_cython_l, error_map_cython_r = census_c.census_matching(
@@ -206,10 +213,16 @@ if __name__ == "__main__":
     b = time.perf_counter()
     print(f"temps de calcul census matching cython {b - a} s")
 
+    if np.array_equal(error_map_numpy_l, error_map_cython_l) and np.array_equal(error_map_numpy_r, error_map_cython_r):
+        print("les cartes d'erreurs sont bien égales")
+    else:
+        raise ValueError("Les cartes d'erreurs n'ont pas la même valeur")
+
+
     c = time.perf_counter()
     disp_map_filtered = disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size)
     d = time.perf_counter()
-    print(f"temps de calcul disparités {d - c} s")
+    print(f"temps de calcul disparités numpy {d - c} s")
 
     e = time.perf_counter()
     disp_map_cython_filtered = census_c.disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size)
@@ -218,13 +231,10 @@ if __name__ == "__main__":
 
     if np.array_equal(disp_map_filtered, disp_map_cython_filtered):
         print("les cartes de disparités sont bien égales")
+    else:
+        raise ValueError("Les cartes de disparité n'ont pas la même valeur")
 
-    # c = time.perf_counter()
-    # error_map_numpy_l, error_map_numpy_r = faster_census_matching(
-    #     im_left, im_right, block_size, max_disparity
-    # )
-    # d = time.perf_counter()
-    # print(f"temps de calcul census matching numpy {d - c} s")
+
 
     # print(np.array_equal(error_map_cython_l, error_map_numpy_l))
     # print(np.array_equal(error_map_cython_r, error_map_numpy_r))
