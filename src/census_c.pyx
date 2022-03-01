@@ -4,11 +4,12 @@ from cython.parallel import prange
 np.import_array()
 
 cimport cython
+from numpy.math cimport INFINITY
 
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-cdef inline void line_census_transform(np.uint64_t[:, ::1] bit_strings, 
+cdef void line_census_transform(np.uint64_t[:, ::1] bit_strings, 
                                        np.uint8_t[:, ::1] im, 
                                        int u,
                                        int block_size, 
@@ -60,6 +61,7 @@ cdef inline int hamming_distance(np.uint64_t a, np.uint64_t b) nogil:
 
 
 cdef inline int faster_hamming_distance(np.uint64_t a, np.uint64_t b) nogil:
+    #XOR
     cdef np.uint64_t x = a^b
 
     #SWAR popcount
@@ -78,14 +80,14 @@ cdef inline int faster_hamming_distance(np.uint64_t a, np.uint64_t b) nogil:
 
 @cython.boundscheck(False) 
 @cython.wraparound(False) 
-cdef inline void compute_line_costs(np.uint64_t[:, ::1] bit_strings_l, 
-                                    np.uint64_t[:, ::1] bit_strings_r, 
-                                    np.uint16_t[:, :, ::1] error_map_l,
-                                    np.uint16_t[:, :, ::1] error_map_r,
-                                    int u, 
-                                    int l1_cropped, 
-                                    int l2_cropped,
-                                    int max_disparity) nogil:
+cdef void compute_line_costs(np.uint64_t[:, ::1] bit_strings_l, 
+                             np.uint64_t[:, ::1] bit_strings_r, 
+                             np.uint16_t[:, :, ::1] error_map_l,
+                             np.uint16_t[:, :, ::1] error_map_r,
+                             int u, 
+                             int l1_cropped, 
+                             int l2_cropped,
+                             int max_disparity) nogil:
 
     cdef int cost
     cdef int v1, v2, d, i
@@ -103,9 +105,9 @@ cdef inline void compute_line_costs(np.uint64_t[:, ::1] bit_strings_l,
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def census_matching(np.uint8_t[:, ::1] im_left,
-                      np.uint8_t[:, ::1] im_right,
-                      int block_size, 
-                      int max_disparity):
+                    np.uint8_t[:, ::1] im_right,
+                    int block_size, 
+                    int max_disparity):
 
     cdef int h1 = im_right.shape[0]
     cdef int l1 = im_right.shape[1]
@@ -127,13 +129,13 @@ def census_matching(np.uint8_t[:, ::1] im_left,
 
     cdef np.uint16_t[:, :, ::1] error_map_l = np.full(
         (h1_cropped, l1_cropped, max_disparity + 1),
-        np.iinfo(np.uint16).max,
+        65535, #max cost value (16 bits)
         dtype=np.uint16,
     )
 
     cdef np.uint16_t[:, :, ::1] error_map_r = np.full(
         (h1_cropped, l2_cropped, max_disparity + 1),
-        np.iinfo(np.uint16).max,
+        65535,
         dtype=np.uint16,
     )
 
@@ -145,7 +147,86 @@ def census_matching(np.uint8_t[:, ::1] im_left,
     return error_map_l, error_map_r
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef void compute_line_disparity(np.uint16_t[:, :, ::1] error_map,
+                                 np.int16_t[:, ::1] disparity_map,
+                                 int u,
+                                 int num_disparities,
+                                 int l_cropped) nogil:
+    cdef int v
+    cdef int d
+    cdef int min_cost
+    cdef int min_index
+    for v in range(l_cropped):
+        min_cost = 65535
+        best_disparity = -1
+        for d in range(num_disparities):
+            if error_map[u, v, d] < min_cost:
+                min_cost = error_map[u, v, d]
+                best_disparity = d
+        disparity_map[u, v] = best_disparity
 
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef void check_line_symmetry(np.int16_t[:, ::1] disparity_map_l,
+                              np.int16_t[:, ::1] disparity_map_r,
+                              np.float32_t[:, ::1] disparity_map_l_filtered,
+                              int u,
+                              int l1_cropped,
+                              int half_block_size) nogil:
+    cdef int v1, v2
+    for v1 in range(l1_cropped):
+        v2 = v1 - disparity_map_l[u, v1]
+        if disparity_map_l[u, v1] == disparity_map_r[u, v2]:
+            disparity_map_l_filtered[u + half_block_size, v1 + half_block_size] = disparity_map_l[u, v1]
+
+    
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def disparity_from_error_map(np.uint16_t[:, :, ::1] error_map_l,
+                             np.uint16_t[:, :, ::1] error_map_r,
+                             int block_size):
+
+    cdef int h1_cropped = error_map_l.shape[0]
+    cdef int l1_cropped = error_map_l.shape[1]
+    cdef int l2_cropped = error_map_r.shape[1]
+    cdef int num_disparities = error_map_l.shape[2]
+
+    cdef int h1 = h1_cropped - 1 + block_size
+    cdef int l1 = l1_cropped - 1 + block_size
+
+    cdef int half_block_size = block_size // 2
+    
+    cdef np.int16_t[:, ::1] disparity_map_l = np.zeros(
+        (h1_cropped, l1_cropped),
+        dtype=np.int16
+    )
+    
+    cdef np.int16_t[:, ::1] disparity_map_r = np.zeros(
+        (h1_cropped, l2_cropped),
+        dtype=np.int16
+    )
+
+    cdef np.float32_t[:, ::1] disparity_map_l_filtered = np.full(
+        (h1, l1),
+        INFINITY,
+        dtype=np.float32
+    )
+
+    cdef int u
+
+    for u in prange(h1_cropped, nogil=True, schedule='static'):
+        compute_line_disparity(error_map_l, disparity_map_l, u, num_disparities, l1_cropped)
+
+    for u in prange(h1_cropped, nogil=True, schedule='static'):
+        compute_line_disparity(error_map_r, disparity_map_r, u, num_disparities, l2_cropped)
+
+    for u in prange(h1_cropped, nogil=True, schedule='static'):
+        check_line_symmetry(disparity_map_l, disparity_map_r, disparity_map_l_filtered, u, l1_cropped, half_block_size)
+
+    return disparity_map_l_filtered
 
 
 # @cython.boundscheck(False) 

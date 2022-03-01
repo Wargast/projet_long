@@ -189,14 +189,7 @@ def disparity_from_error_map(
         constant_values=np.inf,
     )
 
-    disparity_map_left = np.pad(
-        disparity_map_left,
-        (half_block_size, half_block_size),
-        mode="constant",
-        constant_values=np.inf,
-    )
-
-    return disparity_map_left_filtered, disparity_map_left
+    return disparity_map_left_filtered
 
 
 if __name__ == "__main__":
@@ -213,9 +206,18 @@ if __name__ == "__main__":
     b = time.perf_counter()
     print(f"temps de calcul census matching cython {b - a} s")
 
-    disp_map_filtered, disp_map = disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size)
+    c = time.perf_counter()
+    disp_map_filtered = disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size)
+    d = time.perf_counter()
+    print(f"temps de calcul disparités {d - c} s")
 
+    e = time.perf_counter()
+    disp_map_cython_filtered = census_c.disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size)
+    f = time.perf_counter()
+    print(f"temps de calcul disparités cython {f - e} s")
 
+    if np.array_equal(disp_map_filtered, disp_map_cython_filtered):
+        print("les cartes de disparités sont bien égales")
 
     # c = time.perf_counter()
     # error_map_numpy_l, error_map_numpy_r = faster_census_matching(
