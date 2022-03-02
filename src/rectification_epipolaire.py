@@ -51,7 +51,7 @@ def rectification():
                       interpolation=cv2.INTER_NEAREST,
                       borderMode=cv2.BORDER_CONSTANT,
                       borderValue=(0, 0, 0, 0))
-    cv2.imwrite('im_l.png', rimg_l)
+    cv2.imwrite('../results/rectified_im_l.png', rimg_l)
     
     # Im_r rectfiée
     mapr_x, mapr_y = cv2.initUndistortRectifyMap(cameraMatrix2, distCoeffs2, R2, P2, im_r_gray.shape[::-1], cv2.CV_16SC2)
@@ -60,7 +60,7 @@ def rectification():
                       interpolation=cv2.INTER_NEAREST,
                       borderMode=cv2.BORDER_CONSTANT,
                       borderValue=(0, 0, 0, 0))
-    cv2.imwrite('im_r.png', rimg_r)
+    cv2.imwrite('../results/rectified_im_r.png', rimg_r)
     
     
 rectification()
