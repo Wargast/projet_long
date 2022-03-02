@@ -87,7 +87,7 @@ class SM_matching:
 
         return left_disparity_map
     
-    def select_disparity(aggregation_volume):
+    def select_disparity(self, aggregation_volume):
         """
         last step of the sgm algorithm, corresponding to equation 14 followed by winner-takes-all approach.
         :param aggregation_volume: H x W x D x N array of matching cost for all defined directions.
@@ -219,7 +219,7 @@ class SM_matching:
                         self.get_path_cost(west, 1), axis=0)
 
             if main.direction == self.paths.SE.direction:
-                for offset in range(start, end):
+                for offset in tqdm(range(start, end)):
                     south_east = cost_volume.diagonal(offset=offset).T
                     north_west = np.flip(south_east, axis=0)
                     dim = south_east.shape[0]
@@ -234,7 +234,7 @@ class SM_matching:
                     opposite_aggregation[y_nw_idx, x_nw_idx, :] = self.get_path_cost(north_west, 1)
 
             if main.direction == self.paths.SW.direction:
-                for offset in range(start, end):
+                for offset in tqdm(range(start, end)):
                     south_west = np.flipud(cost_volume).diagonal(offset=offset).T
                     north_east = np.flip(south_west, axis=0)
                     dim = south_west.shape[0]
@@ -258,6 +258,8 @@ class SM_matching:
 if __name__ == "__main__":
     i_left = cv2.imread("./datas/middlebury/artroom1/im0.png", cv2.IMREAD_GRAYSCALE)
     i_right = cv2.imread("./datas/middlebury/artroom1/im1.png", cv2.IMREAD_GRAYSCALE)
+    i_left = cv2.resize(i_left, (i_left.shape[0]//2, i_left.shape[1]//2))
+    i_right = cv2.resize(i_right, (i_right.shape[0]//2, i_right.shape[1]//2))
 
     matcher = SM_matching()
     a = t.perf_counter()
