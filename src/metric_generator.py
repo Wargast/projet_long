@@ -58,10 +58,10 @@ def main():
     df = pd.DataFrame( 
         columns=["data", "execution_time", "covering"] + list(f_error.keys())
     )
-    print(df)
+    # print(df)
     # stereo = stereoBM_from_file("results/param.pkl")
     # stereo.setMinDisparity(0)
-    stereo = Local_matching(max_disparity=150,block_size=11)
+    stereo = Local_matching(max_disparity=150,block_size=11, seuil_symmetrie=5)
     # iter on dataset
     for data in tqdm(datas_to_process):
         # open image 

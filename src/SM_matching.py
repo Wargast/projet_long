@@ -77,7 +77,7 @@ class SM_matching:
             i_left, i_right, self.block_size, self.max_disparity
         )
         print('\nStarting left aggregation computation...')
-        left_aggregation_volume = self.aggregate_costs(left_cost_volume.base)
+        left_aggregation_volume = self.aggregate_costs(left_cost_volume)
         # print('\nStarting right aggregation computation...')
         # right_aggregation_volume = self.aggregate_costs(right_cost_volume)
 
@@ -187,21 +187,23 @@ class SM_matching:
         )
 
         path_id = 0
+        main_aggregation = np.zeros(
+            shape=(height, width, disparities), 
+            dtype=cost_volume.dtype
+        )
+        opposite_aggregation = np.copy(main_aggregation)
         for path in self.paths.effective_paths:
             print('\tProcessing paths {} and {}...'.format(
-                path[0].name, path[1].name), end='')
+                path[0].name, path[1].name), end='\n')
             sys.stdout.flush()
             dawn = t.time()
 
-            main_aggregation = np.zeros(
-                shape=(height, width, disparities), 
-                dtype=cost_volume.dtype
-            )
-            opposite_aggregation = np.copy(main_aggregation)
+            main_aggregation.fill(0)
+            opposite_aggregation.fill(0)
 
             main = path[0]
             if main.direction == self.paths.S.direction:
-                for x in range(0, width):
+                for x in tqdm(range(0, width)):
                     south = cost_volume[0:height, x, :]
                     north = np.flip(south, axis=0)
                     main_aggregation[:, x, :] = self.get_path_cost(south, 1)
@@ -209,7 +211,7 @@ class SM_matching:
                         self.get_path_cost(north, 1), axis=0)
 
             if main.direction == self.paths.E.direction:
-                for y in range(0, height):
+                for y in tqdm(range(0, height)):
                     east = cost_volume[y, 0:width, :]
                     west = np.flip(east, axis=0)
                     main_aggregation[y, :, :] = self.get_path_cost(east, 1)
@@ -242,6 +244,7 @@ class SM_matching:
                     main_aggregation[y_sw_idx, x_sw_idx, :] = self.get_path_cost(south_west, 1)
                     opposite_aggregation[y_ne_idx, x_ne_idx, :] = self.get_path_cost(north_east, 1)
 
+            print("start fill agregation_volume")
             aggregation_volume[:, :, :, path_id] = main_aggregation
             aggregation_volume[:, :, :, path_id + 1] = opposite_aggregation
             path_id = path_id + 2
