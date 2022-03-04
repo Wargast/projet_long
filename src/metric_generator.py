@@ -15,12 +15,8 @@ from tqdm import tqdm
 from setup_tools import stereoBM_from_file, stereoSGBM_from_file
 from local_matching import Local_matching
 
-# import algo of disparity map calculation
-from census import faster_census_matching, naive_census_matching, disparity_from_error_map
-
 def rms(I_diff):
-    # make mean squared error on echea res in df
-    
+    # make mean squared error    
     error = np.sqrt(np.square(I_diff))
     error = error.mean(axis=None)
     return error
@@ -28,7 +24,6 @@ def rms(I_diff):
 def bad(I_diff: np.ndarray, alpha: float):
     bad_pix = I_diff[I_diff>alpha]
     return bad_pix.size/I_diff.size
-
 
 def main():
     loader = PFMLoader(color=False, compress=False)
@@ -43,9 +38,6 @@ def main():
     # dict of function to test name as key
     f_error = {
         "rms": (rms, None),
-        # "bad300": (bad, 300),
-        # "bad200": (bad, 200),
-        # "bad100": (bad, 100),
         "bad50" : (bad, 50),
         "bad20" : (bad, 20),
         "bad10" : (bad, 10),
@@ -61,7 +53,15 @@ def main():
     # print(df)
     # stereo = stereoBM_from_file("results/param.pkl")
     # stereo.setMinDisparity(0)
-    stereo = Local_matching(max_disparity=150,block_size=11, seuil_symmetrie=5)
+    max_disparity=150
+    block_size=21
+    seuil_symmetrie=2
+    stereo = Local_matching(
+        max_disparity=max_disparity,
+        block_size=block_size, 
+        seuil_symmetrie=seuil_symmetrie,
+    )
+    
     # iter on dataset
     for data in tqdm(datas_to_process):
         # open image 
@@ -70,15 +70,8 @@ def main():
         img1 = cv2.imread((data/'im1.png').as_posix(), cv2.IMREAD_GRAYSCALE)
 
         # open GS disp_map
-        # map_ref0 = read_pfm(data/'disp0.pfm')
-        # map_ref1 = read_pfm(data/'disp1.pfm')
-
         map_ref0 = loader.load_pfm(data/'disp0.pfm')
         map_ref1 = loader.load_pfm(data/'disp1.pfm')
-
-        # check if GS is transposed 
-        # if map_ref.shape != img0.shape[:2]:
-        #     map_ref = map_ref.transpose()
 
         start = time.time()
         # process each algo on stereocouple
@@ -99,9 +92,9 @@ def main():
         I_diff = I_diff[~np.isinf(I_diff)]   
         df.iloc[len(df.index)-1, 2] = I_diff.size/disparity_map.size
 
+        # append each metrics
         for f_name, [f, param] in f_error.items():
             # print(f"process metric {f_name}...")
-
             if param is not None:
                 res = f(I_diff, param)
             else:
@@ -110,27 +103,7 @@ def main():
             df.loc[len(df.index)-1, f_name] = res
         print(df)
 
-        plt.figure(data.name)#, figsize=(160,90))
-        plt.subplot(2,2,1)
-        disparity_map[np.isinf(disparity_map)] = 0
-        plt.imshow(disparity_map, 'gray')
-        plt.title("disparity map 0")
-        plt.subplot(2,2,2)
-        plt.imshow(map_ref0, 'gray')
-        plt.title("Goal Stantard disparity map 0")
-        
-        errormap_to_show = disparity_map - map_ref0
-        errormap_to_show[np.isnan(errormap_to_show)] = 0
-        errormap_to_show[np.isinf(errormap_to_show)] = 0
-
-        plt.subplot(2,2,3)
-        plt.imshow(np.abs(errormap_to_show), 'gray')
-        plt.title("error /0")
-        plt.subplot(2,2,4)
-        plt.imshow(img0, "gray")
-        plt.title("img0")
-
-        plt.show()
+        # plot_res(data.name, disparity_map, map_ref0, img0 )
 
         # del cost_map
         del disparity_map
@@ -138,11 +111,35 @@ def main():
         # break
         
     print(df)
+
     # generate stat on result
-    df.to_csv(f"results/census-disp=128-block_size=9.csv")
+    df.to_csv(f"results/census-disp={max_disparity}-"+
+                        f"block_size={block_size}-"+
+                        f"seuil_symmetrie={seuil_symmetrie}.csv")
 
 
+def plot_res(name, disparity_map, map_ref, img ):
+    plt.figure(name)#, figsize=(160,90))
+    plt.subplot(2,2,1)
+    disparity_map[np.isinf(disparity_map)] = 0
+    plt.imshow(disparity_map, 'gray')
+    plt.title("disparity map 0")
+    plt.subplot(2,2,2)
+    plt.imshow(map_ref, 'gray')
+    plt.title("Goal Stantard disparity map 0")
 
+    errormap_to_show = disparity_map - map_ref
+    errormap_to_show[np.isnan(errormap_to_show)] = 0
+    errormap_to_show[np.isinf(errormap_to_show)] = 0
+
+    plt.subplot(2,2,3)
+    plt.imshow(np.abs(errormap_to_show), 'gray')
+    plt.title("error (|GS - disp_map|)")
+    plt.subplot(2,2,4)
+    plt.imshow(img, "gray")
+    plt.title("image origine")
+
+    plt.show()
 
 
 if __name__ == "__main__":
