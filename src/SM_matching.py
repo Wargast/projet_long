@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+from pathlib import Path
 from re import I
+from statistics import pvariance
 import sys
 from typing import Tuple
 from matplotlib import pyplot as plt
@@ -8,6 +10,9 @@ from tqdm import tqdm
 import census_c
 import cv2
 import time as t
+import pyvista as pv
+
+from test_recontruction import recontruction, get_Q_from_file
 # import pprofile
 
 @dataclass
@@ -256,10 +261,11 @@ class SM_matching:
 
 
 if __name__ == "__main__":
-    i_left = cv2.imread("./datas/middlebury/artroom1/im0.png", cv2.IMREAD_GRAYSCALE)
-    i_right = cv2.imread("./datas/middlebury/artroom1/im1.png", cv2.IMREAD_GRAYSCALE)
-    i_left = cv2.resize(i_left, (i_left.shape[0]//2, i_left.shape[1]//2))
-    i_right = cv2.resize(i_right, (i_right.shape[0]//2, i_right.shape[1]//2))
+    dataset_path = Path("datas/middlebury/artroom1")
+    i_left = cv2.imread((dataset_path/"im0.png").as_posix(), cv2.IMREAD_GRAYSCALE)
+    i_right = cv2.imread((dataset_path/"im1.png").as_posix(), cv2.IMREAD_GRAYSCALE)
+    i_left = cv2.resize(i_left, (i_left.shape[1]//2, i_left.shape[0]//2))
+    i_right = cv2.resize(i_right, (i_right.shape[1]//2, i_right.shape[0]//2))
 
     matcher = SM_matching()
     a = t.perf_counter()
@@ -271,3 +277,9 @@ if __name__ == "__main__":
 
     plt.imshow(disparity, 'gray')
     plt.show()
+
+    Q = get_Q_from_file(file=dataset_path/'calib.txt')
+    points_p = recontruction(disparity, Q)
+    point_cloud = pv.PolyData(points_p)
+    point_cloud.plot(eye_dome_lighting=True, point_size=2.0)
+
