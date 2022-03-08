@@ -2,13 +2,15 @@ import numpy as np
 import cv2
 import configparser
 from math import floor
+import sys
+
 
 def rectification():
 
     # Loading image to gray
-    im_l = cv2.imread('../datas/malaga/Images/img_CAMERA1_1261228749.918590_left.jpg')
-    im_r = cv2.imread('../datas/malaga/Images/img_CAMERA1_1261228749.918590_right.jpg')
-    
+    im_l = cv2.imread('{}'.format(sys.argv[1]))
+    im_r = cv2.imread('{}'.format(sys.argv[2]))
+
     im_l_gray = cv2.cvtColor(im_l, cv2.COLOR_BGR2GRAY)
     im_r_gray = cv2.cvtColor(im_r, cv2.COLOR_BGR2GRAY)
 

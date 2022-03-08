@@ -32,17 +32,16 @@ class Local_matching:
         self.optimisation = optimisation
         self.cost_threshold = cost_threshold
 
-
     def compute(self, i_left: np.ndarray, i_right: np.ndarray):
         if self.optimisation == "cython":
-            error_map_l, error_map_r = census_c.census_matching(i_left, i_right, self.block_size, self.max_disparity)
+            if self.method == "census": 
+                error_map_l, error_map_r = census_c.census_matching(i_left, i_right, self.block_size, self.max_disparity)
             return self._disparity_from_error_map2(error_map_l, error_map_r)
         elif self.optimisation == "python":
             error_map = self._faster_matching(i_left, i_right)
         elif self.optimisation == "python_naif":
             error_map = self._naive_matching(i_left,i_right)
         return self._disparity_from_error_map(error_map)
-
 
     def _disparity_from_error_map2(self,error_map_l: np.ndarray,error_map_r: np.ndarray,) -> np.ndarray:
         return census_c.disparity_from_error_map(error_map_l, error_map_r, self.block_size, self.seuil_symmetrie

@@ -7,7 +7,7 @@ if platform=="linux":
     ext_modules = [
         Extension(
             "census_c",
-            ["census_c.pyx"],
+            ["./metrics/census_c.pyx"],
             extra_compile_args=['-fopenmp'],
             extra_link_args=['-fopenmp']
         )
@@ -17,7 +17,7 @@ else:
     ext_modules = [
         Extension(
             "census_c",
-            ["census_c.pyx"],
+            ["./metrics/census_c.pyx"],
             extra_compile_args=['/openmp']
         )
     ]
