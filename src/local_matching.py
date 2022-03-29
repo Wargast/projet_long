@@ -55,7 +55,7 @@ class Local_matching:
             return census_c.disparity_from_error_map(
                 error_map_l, error_map_r, self.block_size, self.seuil_symmetrie
             )
-        elif self.method in ["sad", "ssd"]:
+        elif self.method == "ssd":
             return ssd_sad_c.disparity_from_error_map(
                 error_map_l, error_map_r, self.block_size, self.seuil_symmetrie
             )
