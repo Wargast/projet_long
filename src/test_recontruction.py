@@ -50,22 +50,28 @@ def recontruction(disparity, Q):
 
 
 
-# disparity = loader.load_pfm(dataset_path/'disp0.pfm')
-img0 = cv2.imread((dataset_path/"im0.png").as_posix(), cv2.IMREAD_GRAYSCALE)
-img1 = cv2.imread((dataset_path/"im1.png").as_posix(), cv2.IMREAD_GRAYSCALE)
+disparity = loader.load_pfm(dataset_path/'disp0.pfm')
+# img0 = cv2.imread((dataset_path/"im0.png").as_posix(), cv2.IMREAD_GRAYSCALE)
+# img1 = cv2.imread((dataset_path/"im1.png").as_posix(), cv2.IMREAD_GRAYSCALE)
 
+
+# img0 = cv2.resize(img0, (640, 360))
+# img1 = cv2.resize(img1, (640, 360))
+
+# stereo = Local_matching(max_disparity=50, block_size=11, method="census", seuil_symmetrie=0)
 
 # stereo = stereoSGBM_from_file(tuned_params)
 # # stereo = stereoBM_from_file(tuned_params)
 # disparity = stereo.compute(img0, img1)/16
 
-stereo = Local_matching(max_disparity=300, block_size=31)
-disparity = stereo.compute(img0, img1)
+# stereo = Local_matching(max_disparity=150, block_size=21, method="census")
+# stereo = Local_matching(max_disparity=150, block_size=9, method="ssd", seuil_symmetrie=300)
+# disparity = stereo.compute(img0, img1)
 
 print(f"bound: [{disparity.min()}, {disparity.max()}], nb points:{np.sum(~np.isnan(disparity))}")
-disparity[disparity <= 12] = np.nan
+# disparity[disparity <= 10] = np.nan
 print(f"bound: [{disparity.min()}, {disparity.max()}], nb points:{np.sum(~np.isnan(disparity))}")
     
 points_p = recontruction(disparity, Q)
 point_cloud = pv.PolyData(points_p)
-point_cloud.plot(eye_dome_lighting=True, point_size=2.0)
+point_cloud.plot(eye_dome_lighting=True, point_size=1.0)

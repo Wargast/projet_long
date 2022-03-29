@@ -10,6 +10,12 @@ if platform=="linux":
             ["census_c.pyx"],
             extra_compile_args=['-fopenmp'],
             extra_link_args=['-fopenmp']
+        ),
+        Extension(
+            "ssd_sad_c",
+            ["ssd_sad_c.pyx"],
+            extra_compile_args=['-fopenmp'],
+            extra_link_args=['-fopenmp']
         )
     ]
 
@@ -18,6 +24,11 @@ else:
         Extension(
             "census_c",
             ["census_c.pyx"],
+            extra_compile_args=['/openmp']
+        ),
+        Extension(
+            "ssd_sad_c",
+            ["ssd_sad_c.pyx"],
             extra_compile_args=['/openmp']
         )
     ]

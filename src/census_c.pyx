@@ -106,14 +106,13 @@ cdef void compute_line_costs(np.uint64_t[:, :, ::1] bit_strings_l,
     cdef int v1, v2, d, i
 
     for v1 in range(l1_cropped):
-        for d in range(max_disparity + 1):
+        for d in range(min(max_disparity + 1, l2_cropped - v1)):
             cost = 0
             v2 = v1 + d
-            if v2 < l2_cropped:
-                for i in range(nb_strings):
-                    cost += faster_hamming_distance(bit_strings_r[u, v1, i], bit_strings_l[u, v2, i])
-                error_map_r[u, v1, d] = cost
-                error_map_l[u, v2, d] = cost
+            for i in range(nb_strings):
+                cost += faster_hamming_distance(bit_strings_r[u, v1, i], bit_strings_l[u, v2, i])
+            error_map_r[u, v1, d] = cost
+            error_map_l[u, v2, d] = cost
     
 
 @cython.boundscheck(False)
@@ -144,13 +143,13 @@ def census_matching(np.uint8_t[:, ::1] im_left,
     cdef int nb_strings = (block_size * block_size) // 64 + 1 
 
     cdef np.uint16_t[:, :, ::1] error_map_l = np.full(
-        (h1_cropped, l1_cropped, max_disparity + 1),
+        (h1_cropped, l2_cropped, max_disparity + 1),
         65535, #max cost value (16 bits)
         dtype=np.uint16,
     )
 
     cdef np.uint16_t[:, :, ::1] error_map_r = np.full(
-        (h1_cropped, l2_cropped, max_disparity + 1),
+        (h1_cropped, l1_cropped, max_disparity + 1),
         65535,
         dtype=np.uint16,
     )

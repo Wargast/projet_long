@@ -9,3 +9,4 @@ venv/
 *.pyd
 *.so
 *.csv
+*.npy
