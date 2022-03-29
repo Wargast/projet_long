@@ -1,10 +1,4 @@
-from cmath import inf
-from distutils.log import error
-import imp
-from sys import exec_prefix
 import time
-from unittest import result
-
 from matplotlib import pyplot as plt
 from pypfm import PFMLoader
 from pathlib import Path
@@ -12,7 +6,6 @@ import pandas as pd
 import numpy as np
 import cv2
 from tqdm import tqdm
-from setup_tools import stereoBM_from_file, stereoSGBM_from_file
 from local_matching import Local_matching
 
 def rms(I_diff):
