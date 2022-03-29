@@ -7,7 +7,7 @@ from typing import Tuple
 from matplotlib import pyplot as plt
 import numpy as np
 from tqdm import tqdm
-import census_c
+import metrics.census_c as census_c
 import cv2
 import time as t
 import pyvista as pv

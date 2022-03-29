@@ -79,7 +79,7 @@ if __name__ == "__main__":
     # print(np.array_equal(error_map_numpy_r, error_map_cython_r))
     # print(np.array_equal(error_map_numpy_l, error_map_cython_l))
 
-    disparity = ssd_sad_c.disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size, seuil_symmetrie=500)
+    disparity = ssd_sad_c.disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size, seuil_symmetrie=0)
 
     disparity[disparity==np.inf] = 0
 

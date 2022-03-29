@@ -2,6 +2,7 @@ build/
 .vscode/
 Makefile
 venv/
+.venv/
 *.npy
 **/__pycache__/**
 *.c

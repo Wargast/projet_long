@@ -6,8 +6,6 @@ np.import_array()
 cimport cython
 from numpy.math cimport INFINITY
 
-import time
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef void aux_func(np.uint8_t[:, ::1] im_left, 
@@ -78,10 +76,8 @@ def ssd_sad(np.uint8_t[:, ::1] im_left,
 
     cdef int d
 
-    a = time.perf_counter()
-
-    # for d in prange(max_disparity + 1, nogil=True, schedule='static'):
-    for d in range(max_disparity + 1):
+    for d in prange(max_disparity + 1, nogil=True, schedule='static'):
+    # for d in range(max_disparity + 1):
         aux_func(im_left,
                 im_right,
                 error_map_l,
@@ -92,10 +88,6 @@ def ssd_sad(np.uint8_t[:, ::1] im_left,
                 l1,
                 d,
                 block_size)     
-
-    b = time.perf_counter()
-           
-    print(f"temps : {b - a} s")
 
     return error_map_l.base, error_map_r.base
 

@@ -1,12 +1,7 @@
-from cmath import inf
-import pickle
 from pprint import pprint
-import time
-from unittest import result
 from local_matching import Local_matching
 from pypfm import PFMLoader
 from pathlib import Path
-import pandas as pd
 import numpy as np
 import cv2
 import pyvista as pv
@@ -72,4 +67,4 @@ if __name__ == "__main__":
     Q = get_Q_from_file(file=dataset_path/'calib.txt')
     points_p = recontruction(disparity, Q)
     point_cloud = pv.PolyData(points_p)
-    point_cloud.plot(eye_dome_lighting=True, point_size=2.0)
+    point_cloud.plot(eye_dome_lighting=True, point_size=1.0)

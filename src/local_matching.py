@@ -1,11 +1,11 @@
 from re import I
 import numpy as np
 from tqdm import tqdm
-import census_c
+import metrics.census_c as census_c
 import cv2
 import time
 import matplotlib.pyplot as plt
-import ssd_sad_c
+import metrics.ssd_sad_c as ssd_sad_c
 
 
 class Local_matching:
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     # im_right = cv2.resize(im_right, (640, 360))
 
 
-    matcher = Local_matching(max_disparity=150, block_size=9, method="ssd", seuil_symmetrie=0)
+    matcher = Local_matching(max_disparity=150, block_size=21, method="census", seuil_symmetrie=0)
     # matcher = Local_matching(max_disparity=75, block_size=15, method="census", seuil_symmetrie=0)
     # matcher = Local_matching(max_disparity=50, block_size=11, method="census", seuil_symmetrie=0)
     a = time.perf_counter()
@@ -81,7 +81,7 @@ if __name__ == "__main__":
 
     disparity[disparity==np.inf] = 0
 
-    plt.imshow(disparity, 'RdYlBu_r')
+    plt.imshow(disparity, 'gray')
     plt.show()
 
 

@@ -3,6 +3,7 @@ from tqdm import tqdm
 import census_c
 import cv2
 import time
+import matplotlib.pyplot as plt
 
 
 def naive_census_transform(im: np.ndarray, block_size: int) -> np.ndarray:
@@ -196,8 +197,8 @@ def disparity_from_error_map(
 
 
 if __name__ == "__main__":
-    im_left = cv2.imread("./datas/middlebury/artroom1/im0.png", cv2.IMREAD_GRAYSCALE)
-    im_right = cv2.imread("./datas/middlebury/artroom1/im1.png", cv2.IMREAD_GRAYSCALE)
+    im_left = cv2.imread("./datas/middlebury/curule1/im0.png", cv2.IMREAD_GRAYSCALE)
+    im_right = cv2.imread("./datas/middlebury/curule1/im1.png", cv2.IMREAD_GRAYSCALE)
 
     # im_left = cv2.resize(im_left, (640, 360))
     # im_right = cv2.resize(im_right, (640, 360))
@@ -253,3 +254,9 @@ if __name__ == "__main__":
     # else:
     #     raise ValueError("Les cartes de disparité n'ont pas la même valeur")
 
+    disparity = census_c.disparity_from_error_map(error_map_cython_l, error_map_cython_r, block_size, seuil_symmetrie=0)
+
+    disparity[disparity==np.inf] = 0
+
+    plt.imshow(disparity, 'gray')
+    plt.show()
