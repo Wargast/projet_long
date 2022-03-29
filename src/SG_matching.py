@@ -48,7 +48,7 @@ class Paths:
 
 
 
-class SM_matching:
+class SG_matching:
     def __init__(
         self,
         P1: int =10, 
@@ -267,7 +267,7 @@ if __name__ == "__main__":
     i_left = cv2.resize(i_left, (i_left.shape[1]//2, i_left.shape[0]//2))
     i_right = cv2.resize(i_right, (i_right.shape[1]//2, i_right.shape[0]//2))
 
-    matcher = SM_matching()
+    matcher = SG_matching()
     a = t.perf_counter()
     disparity = matcher.compute(i_left,i_right)
     b = t.perf_counter()

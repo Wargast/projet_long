@@ -21,7 +21,7 @@ class Local_matching:
         Args:
             max_disparity (int, optional): [valeur maximal de matching]. Defaults to 64.
             block_size (int, optional): [taille du bloc de correlation]. Defaults to 9.
-            methode (str, optional): [methode utilisée (census/ssd)]. Defaults to "census".
+            method (str, optional): [methode utilisée (census/ssd)]. Defaults to "census".
         """
         self.method = method
         self.max_disparity = max_disparity
